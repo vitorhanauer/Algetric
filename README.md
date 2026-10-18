@@ -140,7 +140,7 @@ The application interface is currently in Portuguese. The instructions below use
 1. Set the origin through **Map → Geographic origin**, or choose **Set origin on map** and click the Earth. The default is São Paulo (−23.55°, −46.63°).
 2. Choose the layer for new objects. Create points, segments, polylines, or polygons by clicking the plane or map. Finish polylines and polygons with a double-click, Enter, or **Finish**. Esc cancels the drawing.
 3. With **Select**, drag a vertex or the entire object. The sidebar shows name/vertex and X/Y side by side. Press **Enter** or leave a name or coordinate field to save the edit. Delete an object with the trash icon beside its name; deletions can be undone.
-4. Use the mouse wheel to zoom. On the plane, drag with the right or middle mouse button to pan. The map uses Cesium navigation controls. The **Origin** button zooms into the working area.
+4. Use the mouse wheel to zoom. On the plane, select **Move** and drag with the left mouse button, or hold **Space** to move temporarily. Releasing Space restores the previous tool and preserves unfinished lines or polygons. Right/middle mouse dragging also pans. Space works normally in text fields. The map uses Cesium navigation controls. The **Origin** button zooms into the working area.
 5. Zooming below an altitude of 60 km changes the globe to a 2D map; zooming above 90 km returns to 3D. Tools and the sidebar remain accessible. Editing pauses during the animation.
 6. Save projects as `.algetric` files. Ctrl+S saves, Ctrl+O opens, Ctrl+N creates a project, Ctrl+Z undoes, Ctrl+Y redoes, and Delete removes the selection. When leaving a modified project, you can save, discard changes, or cancel.
 

@@ -5,14 +5,16 @@ using Algetric.Infrastructure;
 
 namespace Algetric.Desktop;
 
-public enum EditorTool { Select, Point, Segment, Polyline, Polygon, Origin }
+public enum EditorTool { Select, Point, Segment, Polyline, Polygon, Origin, Move }
 public sealed record BridgeMessage(string Type, string Session, long Sequence, long Revision,
     Guid? Id, GeographicPoint[]? Vertices, int Vertex = 0, double Longitude = 0, double Latitude = 0, double Height = 0);
 public sealed class EditorViewModel : INotifyPropertyChanged
 {
     public ProjectEditor Editor { get; } = new();
     private readonly BridgeMessageGate gate = new();
-    public EditorTool Tool { get; private set; }
+    public EditorTool SelectedTool { get; private set; }
+    public bool IsTemporaryMove { get; private set; }
+    public EditorTool Tool => IsTemporaryMove ? EditorTool.Move : SelectedTool;
     public int VertexIndex { get; set; }
     public string? FilePath { get; set; }
     public string Status { get; private set; } = "Pronto • Coordenadas locais em metros";
@@ -29,8 +31,13 @@ public sealed class EditorViewModel : INotifyPropertyChanged
         Revision++; PropertyChanged?.Invoke(this, new(null)); Changed?.Invoke();
     }
     public void SetStatus(string value) { Status = value; PropertyChanged?.Invoke(this, new(nameof(Status))); }
-    public void SetTool(EditorTool tool) { Tool = tool; OnChanged(); }
-    public void Load(ProjectDocument document) { gate.Reset(); VertexIndex = 0; Tool = EditorTool.Select; Editor.Load(document); }
+    public void SetTool(EditorTool tool) { SelectedTool = tool; IsTemporaryMove = false; OnChanged(); }
+    public void BeginTemporaryMove()
+    { if (IsTemporaryMove) return; IsTemporaryMove = true; OnChanged(); }
+    public void EndTemporaryMove()
+    { if (!IsTemporaryMove) return; IsTemporaryMove = false; OnChanged(); }
+    public void Load(ProjectDocument document)
+    { gate.Reset(); VertexIndex = 0; SelectedTool = EditorTool.Select; IsTemporaryMove = false; Editor.Load(document); }
     public void Try(Action action)
     {
         try { action(); SetStatus("Pronto • Medidas planimétricas"); }

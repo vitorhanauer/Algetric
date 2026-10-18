@@ -10,7 +10,7 @@ JavaScript tests verify distinct transition thresholds and rejection of stale sn
 
 ## Object properties checks
 
-Run `dotnet run --project tests/Algetric.Smoke -- --properties-only` in a graphical session to check the compact sidebar. This checks that name/vertex and X/Y share their respective rows, Enter and focus loss save edits, moving between fields preserves focus, repeated confirmation creates only one undo operation, renaming works without an Apply button, invalid coordinates preserve the geometry, edits target the selected vertex, and inline deletion removes the intended object and supports undo. It writes `artifacts/smoke/cartesian.png` for visual inspection. These checks also run before the full WebView smoke scenario.
+Run `dotnet run --project tests/Algetric.Smoke -- --properties-only` in a graphical session to check the compact sidebar. This checks that name/vertex and X/Y share their respective rows, Enter and focus loss save edits, moving between fields preserves focus, repeated confirmation creates only one undo operation, renaming works without an Apply button, invalid coordinates preserve the geometry, edits target the selected vertex, and inline deletion removes the intended object and supports undo. The same scenario checks the Move toolbar button, panning with the left mouse button, temporary movement while Space is held (including key repeat), restoration on release or window deactivation, preservation of an unfinished segment, and ignoring Space in text inputs. It writes `artifacts/smoke/cartesian.png` for visual inspection. These checks also run before the full WebView smoke scenario.
 
 ## Desktop installation tests
 

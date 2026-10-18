@@ -45,6 +45,7 @@ public sealed class SmokeApplication : Application
         var model = Field<EditorViewModel>(window, "model"); var map = Field<NativeWebView>(window, "map");
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
         await VerifyPropertiesAsync(window, model);
+        VerifyNavigation(window, model);
         model.Editor.MarkSaved();
         await Task.Delay(1000);
         Directory.CreateDirectory("artifacts/smoke");
@@ -130,6 +131,56 @@ public sealed class SmokeApplication : Application
         await File.WriteAllTextAsync("artifacts/smoke/map.txt", await map.InvokeScript("document.body.innerText"));
         // The native WebView is captured separately during manual desktop verification.
         Console.WriteLine("SMOKE PASS: UI, WebGL, offline raster, synchronization, 3D↔2D, map editing, undo/redo and persistence.");
+    }
+    private static void VerifyNavigation(MainWindow window, EditorViewModel model)
+    {
+        var canvas = Field<CartesianCanvas>(window, "canvas");
+        var move = window.GetVisualDescendants().OfType<Button>().SingleOrDefault(button => button.Content is string text && text.Contains("Mover"));
+        if (move is null) throw new InvalidOperationException("Missing Move toolbar button.");
+        var original = model.Editor.Document;
+        move.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        if (model.Tool != EditorTool.Move) throw new InvalidOperationException("Move button did not select navigation.");
+        VerifyPan(window, canvas, model);
+        model.SetTool(EditorTool.Segment); canvas.Focus();
+        ClickCanvas(window, canvas, new(400, 300));
+        canvas.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
+        canvas.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
+        if (model.Tool != EditorTool.Move) throw new InvalidOperationException("Space did not temporarily select Move.");
+        VerifyPan(window, canvas, model);
+        canvas.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.Space });
+        if (model.Tool != EditorTool.Segment) throw new InvalidOperationException("Space release did not restore Segment.");
+        ClickCanvas(window, canvas, new(500, 350));
+        if (model.Editor.Document.Objects.Length != original.Objects.Length + 1) throw new InvalidOperationException("Temporary pan discarded the in-progress segment.");
+        var field = window.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "PropertyName");
+        field.Focus(); field.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
+        if (model.Tool != EditorTool.Segment) throw new InvalidOperationException("Space in a text field activated Move.");
+        canvas.Focus(); canvas.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
+        typeof(WindowBase).GetMethod("HandleDeactivated", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        if (model.Tool != EditorTool.Segment) throw new InvalidOperationException("Window deactivation left Move active.");
+        model.Load(original); model.Editor.Select(original.Objects[0].Id);
+        Console.WriteLine("NAVIGATION PASS: Move button, left drag, Space repeat/release, draft preservation, text input and deactivation.");
+    }
+    private static void VerifyPan(MainWindow window, CartesianCanvas canvas, EditorViewModel model)
+    {
+        var before = model.Editor.Document;
+        var pointer = new Avalonia.Input.Pointer(101, PointerType.Mouse, true);
+        var start = canvas.TranslatePoint(new(300, 250), window)!.Value;
+        var pressed = new PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
+        canvas.RaiseEvent(new PointerPressedEventArgs(canvas, pointer, window, start, 0, pressed, KeyModifiers.None, 1));
+        canvas.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent, canvas, pointer, window, start + new Vector(40, 30), 1, pressed, KeyModifiers.None));
+        canvas.RaiseEvent(new PointerReleasedEventArgs(canvas, pointer, window, start + new Vector(40, 30), 2, new PointerPointProperties(), KeyModifiers.None, MouseButton.Left));
+        var after = model.Editor.Document;
+        if (Math.Abs(after.View.CenterX - (before.View.CenterX - 40 / before.View.PixelsPerMeter)) > 1e-8 ||
+            Math.Abs(after.View.CenterY - (before.View.CenterY + 30 / before.View.PixelsPerMeter)) > 1e-8 ||
+            !after.Objects.SequenceEqual(before.Objects)) throw new InvalidOperationException("Left drag did not pan without changing geometry.");
+    }
+    private static void ClickCanvas(MainWindow window, CartesianCanvas canvas, Point point)
+    {
+        var pointer = new Avalonia.Input.Pointer(102, PointerType.Mouse, true);
+        var position = canvas.TranslatePoint(point, window)!.Value;
+        canvas.RaiseEvent(new PointerPressedEventArgs(canvas, pointer, window, position, 0,
+            new PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 1));
+        canvas.RaiseEvent(new PointerReleasedEventArgs(canvas, pointer, window, position, 1, new PointerPointProperties(), KeyModifiers.None, MouseButton.Left));
     }
     private static async Task VerifyPropertiesAsync(MainWindow window, EditorViewModel model)
     {

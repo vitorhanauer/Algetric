@@ -22,8 +22,16 @@ public sealed class CartesianCanvas : Control
     public CartesianCanvas(EditorViewModel model)
     {
         this.model = model; Focusable = true; ClipToBounds = true; Cursor = new(StandardCursorType.Cross);
-        model.Changed += () => { if (lastTool != model.Tool) CancelDraft(); lastTool = model.Tool; InvalidateVisual(); };
+        model.Changed += RefreshTool;
     }
+    private void RefreshTool()
+    {
+        if (lastTool != model.SelectedTool) CancelDraft();
+        lastTool = model.SelectedTool;
+        if (model.Tool == EditorTool.Move) { preview = null; dragId = null; dragVertices = null; }
+        UpdateCursor(); InvalidateVisual();
+    }
+    private void UpdateCursor() => Cursor = new(model.Tool == EditorTool.Move || panning ? StandardCursorType.Hand : StandardCursorType.Cross);
     private ViewState View => model.Editor.Document.View;
     public Point ToScreen(LocalPoint point) => new((point.X - View.CenterX) * View.PixelsPerMeter + Bounds.Width / 2,
         Bounds.Height / 2 - (point.Y - View.CenterY) * View.PixelsPerMeter);
@@ -85,8 +93,9 @@ public sealed class CartesianCanvas : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e); Focus(); var position = e.GetPosition(this); var properties = e.GetCurrentPoint(this).Properties;
-        if (properties.IsMiddleButtonPressed || properties.IsRightButtonPressed)
-        { panning = true; previous = position; e.Pointer.Capture(this); return; }
+        if (properties.IsMiddleButtonPressed || properties.IsRightButtonPressed ||
+            (properties.IsLeftButtonPressed && model.Tool == EditorTool.Move))
+        { panning = true; previous = position; e.Pointer.Capture(this); UpdateCursor(); e.Handled = true; return; }
         if (!properties.IsLeftButtonPressed) return;
         if (model.Tool != EditorTool.Select) { CreateAt(position, e.ClickCount); return; }
         var hit = Hit(position); model.VertexIndex = Math.Max(0, hit.Vertex); model.Editor.Select(hit.Shape?.Id);
@@ -98,7 +107,7 @@ public sealed class CartesianCanvas : Control
     {
         var point = ToLocal(position);
         if (model.Tool == EditorTool.Point) { model.Try(() => model.Add(ShapeKind.Point, [point])); return; }
-        if (model.Tool == EditorTool.Origin) return;
+        if (model.Tool is EditorTool.Origin or EditorTool.Move) return;
         if (draft.Count > 0 && Distance(ToScreen(draft[^1]), position) < 2 && clickCount > 1) { FinishDraft(); return; }
         if (model.Tool == EditorTool.Polygon && draft.Count >= 3 && Distance(ToScreen(draft[0]), position) < 10) { FinishDraft(); return; }
         draft.Add(point);
@@ -108,7 +117,7 @@ public sealed class CartesianCanvas : Control
     }
     public void FinishDraft()
     {
-        if (draft.Count == 0) return;
+        if (draft.Count == 0 || model.Tool is < EditorTool.Segment or > EditorTool.Polygon) return;
         var points = draft.ToArray();
         model.Try(() => { model.Add((ShapeKind)((int)model.Tool - 1), points); draft.Clear(); }); InvalidateVisual();
     }
@@ -132,10 +141,10 @@ public sealed class CartesianCanvas : Control
     {
         base.OnPointerReleased(e);
         if (dragId is { } id && preview is not null) model.Try(() => model.Replace(id, preview));
-        preview = null; dragVertices = null; dragId = null; panning = false; e.Pointer.Capture(null); InvalidateVisual();
+        preview = null; dragVertices = null; dragId = null; panning = false; e.Pointer.Capture(null); UpdateCursor(); InvalidateVisual();
     }
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
-    { base.OnPointerCaptureLost(e); preview = null; dragVertices = null; dragId = null; panning = false; InvalidateVisual(); }
+    { base.OnPointerCaptureLost(e); preview = null; dragVertices = null; dragId = null; panning = false; UpdateCursor(); InvalidateVisual(); }
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e); var position = e.GetPosition(this); var before = ToLocal(position);

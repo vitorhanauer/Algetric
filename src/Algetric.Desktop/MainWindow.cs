@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -49,6 +51,9 @@ public sealed class MainWindow : Window
         model.FileActionRequested += command => _ = RunAsync(command switch { "save" => () => SaveAsync(false), "open" => OpenAsync, _ => NewAsync });
         model.PropertyChanged += (_, _) => { Title = model.Title; status.Text = model.Status; };
         KeyDown += OnKeyDown;
+        AddHandler(KeyDownEvent, OnMoveKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnMoveKeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
+        Deactivated += (_, _) => model.EndTemporaryMove();
         Closing += OnClosing;
         Closed += (_, _) => { server.Dispose(); client.Dispose(); };
         Opened += async (_, _) => await RunAsync(LoadProviderAsync);
@@ -77,7 +82,7 @@ public sealed class MainWindow : Window
         var tabs = new TabControl();
         tabs.Items.Add(new TabItem { Header = "Plano cartesiano", Content = canvas });
         tabs.Items.Add(new TabItem { Header = "🌐 Mapa", Content = map });
-        tabs.SelectionChanged += (_, _) => canvas.CancelDraft(); root.Children.Add(tabs);
+        tabs.SelectionChanged += (_, _) => { model.EndTemporaryMove(); canvas.CancelDraft(); }; root.Children.Add(tabs);
         return root;
     }
     private Menu BuildMenu()
@@ -95,17 +100,18 @@ public sealed class MainWindow : Window
         maps.Items.Add(Item("Provedor de mapas…", EditProviderAsync)); maps.Items.Add(Item("Regiões offline…", OfflineAsync));
         var help = new MenuItem { Header = "Ajuda" }; help.Items.Add(Item("Como editar", async () =>
         {
-            await Dialogs.Message(this, "Como editar", "Escolha uma ferramenta e clique para criar.\nLinhas e polígonos: duplo clique ou Enter para concluir; Esc cancela.\nSelecionar: arraste um vértice ou o objeto.\nPlano: botão direito/central move; roda ajusta o zoom.\nMapa: arraste para navegar; use o zoom para alternar globo e 2D.\nMedidas planimétricas • limite de 50 km da origem.");
+            await Dialogs.Message(this, "Como editar", "Escolha uma ferramenta e clique para criar.\nLinhas e polígonos: duplo clique ou Enter para concluir; Esc cancela.\nSelecionar: arraste um vértice ou o objeto.\nPlano: Mover + arraste navega; segure Espaço para mover temporariamente.\nSolte Espaço para voltar à ferramenta anterior. Botão direito/central também move; roda ajusta o zoom.\nMapa: arraste para navegar; use o zoom para alternar globo e 2D.\nMedidas planimétricas • limite de 50 km da origem.");
         }));
         menu.Items.Add(file); menu.Items.Add(edit); menu.Items.Add(maps); menu.Items.Add(help); return menu;
     }
     private Control BuildToolbar()
     {
         var panel = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8) };
-        foreach (var (label, tool) in new[]{("↖ Selecionar",EditorTool.Select),("• Ponto",EditorTool.Point),
+        foreach (var (label, tool) in new[]{("↖ Selecionar",EditorTool.Select),("✥ Mover",EditorTool.Move),("• Ponto",EditorTool.Point),
             ("╱ Segmento",EditorTool.Segment),("⌁ Linha",EditorTool.Polyline),("⬡ Polígono",EditorTool.Polygon)})
         {
             var button = Button(label, () => { canvas.CancelDraft(); model.SetTool(tool); return Task.CompletedTask; });
+            if (tool == EditorTool.Move) ToolTip.SetTip(button, "Mover o plano • segure Espaço para ativar temporariamente");
             tools.Add((button, tool)); panel.Children.Add(button);
         }
         panel.Children.Add(Button("✓ Concluir", () => { canvas.FinishDraft(); _ = map.InvokeScript("window.algetric?.finish()"); return Task.CompletedTask; }));
@@ -245,6 +251,18 @@ public sealed class MainWindow : Window
         if (closingApproved || !model.Editor.IsDirty) return;
         e.Cancel = true;
         await RunAsync(async () => { if (await ConfirmUnsavedAsync()) { closingApproved = true; Close(); } });
+    }
+    private void OnMoveKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || e.KeyModifiers != KeyModifiers.None || !canvas.IsEffectivelyVisible) return;
+        if (e.Source is TextBox or ComboBox || e.Source is Visual visual &&
+            visual.GetVisualAncestors().Any(parent => parent is TextBox or ComboBox or Menu)) return;
+        model.BeginTemporaryMove(); e.Handled = true;
+    }
+    private void OnMoveKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || !model.IsTemporaryMove) return;
+        model.EndTemporaryMove(); e.Handled = true;
     }
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
