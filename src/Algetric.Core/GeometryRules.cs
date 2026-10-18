@@ -13,6 +13,13 @@ public static class GeometryRules
 
     public static void Validate(GeometryObject shape)
     {
+        if (shape.Kind == ShapeKind.FunctionGraph)
+        {
+            if (shape.Function is null || shape.Vertices.IsDefault || !shape.Vertices.IsEmpty)
+                throw new ArgumentException("Definição de gráfico de função inválida.");
+            return;
+        }
+        if (shape.Function is not null) throw new ArgumentException("Definição de gráfico de função inválida.");
         if (shape.Vertices.IsDefault || shape.Vertices.Any(p => !double.IsFinite(p.X)
             || !double.IsFinite(p.Y) || Math.Sqrt(p.X * p.X + p.Y * p.Y) > 50_000))
             throw new ArgumentException("As coordenadas devem ser finitas e estar a até 50 km da origem.");
@@ -31,6 +38,9 @@ public static class GeometryRules
 
     public static Geometry ToGeometry(GeometryObject shape)
     {
+        if (shape.Kind == ShapeKind.FunctionGraph && shape.Function is { } function)
+            return new MultiLineString(function.GetSegments().Select(segment => new LineString(
+                segment.Select(point => new Coordinate(point.X, point.Y)).ToArray())).ToArray());
         var coordinates = shape.Vertices.Select(p => new Coordinate(p.X, p.Y)).ToArray();
         var factory = new GeometryFactory();
         return shape.Kind switch
@@ -40,6 +50,9 @@ public static class GeometryRules
             _ => factory.CreateLineString(coordinates)
         };
     }
+
+    public static IEnumerable<LocalPoint> DisplayPoints(GeometryObject shape) => shape.Function is { } function
+        ? function.GetSegments().SelectMany(segment => segment) : shape.Vertices;
 
     public static (double Length, double Area) Measure(GeometryObject shape)
     {

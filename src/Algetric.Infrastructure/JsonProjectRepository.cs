@@ -35,6 +35,6 @@ public sealed class JsonProjectRepository : IProjectRepository
         GeometryRules.ValidateDocument(document);
         using var transform = new ProjCoordinateTransform(document.Origin);
         foreach (var shape in document.Objects)
-            foreach (var vertex in shape.Vertices) transform.ToGeographic(vertex);
+            foreach (var vertex in GeometryRules.DisplayPoints(shape)) transform.ToGeographic(vertex);
     }
 }

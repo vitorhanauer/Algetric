@@ -91,7 +91,8 @@ public sealed partial class EditorViewModel : INotifyPropertyChanged
                 o.Name,
                 kind = (int)o.Kind,
                 color = document.Layers.First(l => l.Id == o.LayerId).Color,
-                vertices = o.Vertices.Select(transform.ToGeographic).ToArray()
+                vertices = GeometryRules.DisplayPoints(o).Select(transform.ToGeographic).ToArray(),
+                paths = o.Function?.GetSegments().Select(segment => segment.Select(transform.ToGeographic).ToArray()).ToArray()
             }).ToArray()
         }, JsonProjectRepository.Json);
     }

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace Algetric.Core;
 
-public sealed class ProjectEditor
+public sealed partial class ProjectEditor
 {
     public const string MissingLayerMessage = "Crie uma camada pelo botão + antes de criar objetos.";
     private readonly Stack<ProjectDocument> undo = new();
@@ -31,7 +31,7 @@ public sealed class ProjectEditor
         var bottom = Math.Min(start.Y, end.Y); var top = Math.Max(start.Y, end.Y);
         var visibleLayers = Document.Layers.Where(layer => layer.Visible).Select(layer => layer.Id).ToHashSet();
         SelectMany(Document.Objects.Where(shape => shape.Visible && visibleLayers.Contains(shape.LayerId) &&
-            shape.Vertices.All(point => point.X >= left && point.X <= right && point.Y >= bottom && point.Y <= top))
+            GeometryRules.DisplayPoints(shape).All(point => point.X >= left && point.X <= right && point.Y >= bottom && point.Y <= top))
             .Select(shape => shape.Id));
     }
     public void MarkSaved() { saved = Document; Changed?.Invoke(); }
