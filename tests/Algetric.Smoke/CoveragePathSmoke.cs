@@ -66,6 +66,7 @@ public sealed partial class SmokeApplication
         SaveCoverageScreenshot(window, "coverage-result");
         model.Editor.Undo(); CheckLayer(model.Editor.Document.Objects.SequenceEqual(before.Objects), "Path generation must undo in one operation.");
         await VerifyExternalPointAndVertexAsync(window, model, polygon);
+        await VerifyCoverageObstructionsAsync(window, model, polygon);
         model.Load(original); model.Editor.Select(polygon.Id);
         Console.WriteLine("COVERAGE PATH PASS: polygon menu, preselection, point choices, validation, real native route, cancel and undo.");
     }

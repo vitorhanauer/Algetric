@@ -152,6 +152,8 @@ Local coordinates use meters in an ellipsoidal WGS84 azimuthal equidistant proje
 
 Right-click a polygon on the plane, map, or its object row and choose **Generate point path**. You can also open the dialog from **Edit**. The context polygon is selected automatically; choose another polygon if needed, select existing start/end points, choose vertices of the selected polygon, or enter coordinates, and set the coverage width in meters and overlap percentage (0% to less than 100%). Endpoints may be inside or outside the polygon, within the project’s 50 km coordinate limit. External endpoints are joined to the nearest polygon boundary by straight entry/exit segments; the coverage route itself remains inside the polygon.
 
+The optional **Obstructions** multiselect accepts other polygons; click an item to select or deselect it, and leave everything unselected for coverage without obstructions. Only polygons strictly inside the main area are sent to the planner. External, partially external, and boundary-touching polygons are silently ignored. Internal obstructions must not touch or overlap each other, and endpoints must not lie inside them. The generated route avoids their interiors.
+
 Generation runs in the background using `BoustrophedonDotnetWrapper` 0.1.3. The result is an editable path object in the polygon's layer, including the requested endpoints. Paths may revisit waypoints, are saved with the project, and support undo/redo as a single operation. Cancelling the dialog discards a pending result. Very dense requests are rejected when they would exceed 10,000 sweep lanes.
 
 The current NuGet package supplies its native planner only for **Linux x64 with glibc**. Other desktop platforms can open and edit saved paths, but cannot generate new paths with this package version.
@@ -183,4 +185,4 @@ The smoke test opens a real window and checks WebGL, synchronization, globe/map 
 
 The final package is written to `artifacts/algetric-linux-x64.tar.gz`. Extract it and run `bash install.sh` to add it to your applications menu, or run `./Algetric.Desktop` directly. The package includes the .NET runtime; PROJ and WebKitGTK remain native system dependencies. See the [architecture](docs/architecture.md), [verification](docs/verification.md), and [license notices](THIRD_PARTY_NOTICES.md).
 
-Obstacle avoidance, 3D terrain, polygons with holes, and advanced GIS formats are outside the scope of this MVP.
+3D terrain, polygons with holes, and advanced GIS formats are outside the scope of this MVP.

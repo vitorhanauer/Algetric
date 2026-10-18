@@ -26,17 +26,18 @@ internal static partial class Dialogs
         inputs.Children.Add(new TextBlock { Text = "Polígono", FontWeight = FontWeight.SemiBold });
         var selector = new ComboBox { Name = "CoveragePolygon", ItemsSource = choices, SelectedValueBinding = new Binding(nameof(PolygonChoice.Id)), HorizontalAlignment = HorizontalAlignment.Stretch };
         inputs.Children.Add(selector);
+        var obstructions = new CoverageObstructionInput(document); inputs.Children.Add(obstructions);
         var points = document.Objects.Where(shape => shape.Kind == ShapeKind.Point).ToArray();
         var start = new CoveragePointInput("Ponto inicial", "Start", points); var end = new CoveragePointInput("Ponto final", "End", points);
         inputs.Children.Add(start); inputs.Children.Add(end);
         var (width, overlap) = CoverageParameters(inputs);
-        selector.SelectionChanged += (_, _) => { if (selector.SelectedItem is PolygonChoice choice) { start.SetPolygon(choice.Shape, 0); end.SetPolygon(choice.Shape, choice.Shape.Vertices.Length - 1); } };
+        selector.SelectionChanged += (_, _) => { if (selector.SelectedItem is PolygonChoice choice) { start.SetPolygon(choice.Shape, 0); end.SetPolygon(choice.Shape, choice.Shape.Vertices.Length - 1); obstructions.SetPolygon(choice.Id); } };
         selector.SelectedItem = choices.FirstOrDefault(choice => choice.Id == polygonId) ?? choices[0];
         panel.Children.Add(inputs);
         var window = Window("Gerar caminho de pontos", panel, 500);
         UiTheme.Bind(window, Avalonia.Controls.Window.BackgroundProperty, "PanelSurface");
         using var cancellation = new CancellationTokenSource(); window.Closed += (_, _) => cancellation.Cancel();
-        AddCoverageActions(panel, inputs, window, model, selector, start, end, width, overlap, cancellation.Token);
+        AddCoverageActions(panel, inputs, window, model, selector, obstructions, start, end, width, overlap, cancellation.Token);
         await window.ShowDialog(owner);
     }
     private static (TextBox Width, TextBox Overlap) CoverageParameters(StackPanel inputs)
@@ -50,7 +51,7 @@ internal static partial class Dialogs
         return (width, overlap);
     }
     private static void AddCoverageActions(StackPanel panel, StackPanel inputs, Window window, EditorViewModel model,
-        ComboBox polygon, CoveragePointInput start, CoveragePointInput end, TextBox width, TextBox overlap, CancellationToken token)
+        ComboBox polygon, CoverageObstructionInput obstructions, CoveragePointInput start, CoveragePointInput end, TextBox width, TextBox overlap, CancellationToken token)
     {
         var error = new TextBlock { Name = "CoverageError", TextWrapping = TextWrapping.Wrap };
         UiTheme.Bind(error, TextBlock.ForegroundProperty, "DangerText"); panel.Children.Add(error);
@@ -63,7 +64,7 @@ internal static partial class Dialogs
             try
             {
                 var selected = polygon.SelectedItem as PolygonChoice ?? throw new ArgumentException("Selecione um polígono.");
-                await model.GenerateCoveragePathAsync(selected.Id, new(start.Value, end.Value, Parse(width), Parse(overlap)), token);
+                await model.GenerateCoveragePathAsync(selected.Id, new(start.Value, end.Value, Parse(width), Parse(overlap), obstructions.Selected), token);
                 if (!token.IsCancellationRequested) window.Close();
             }
             catch (OperationCanceledException) { }
