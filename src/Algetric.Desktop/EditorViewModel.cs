@@ -7,7 +7,7 @@ namespace Algetric.Desktop;
 
 public enum EditorTool { Select, Point, Segment, Polyline, Polygon, Origin, Move }
 public sealed record BridgeMessage(string Type, string Session, long Sequence, long Revision,
-    Guid? Id, GeographicPoint[]? Vertices, int Vertex = 0, double Longitude = 0, double Latitude = 0, double Height = 0);
+    Guid? Id, GeographicPoint[]? Vertices, int Vertex = 0, double Longitude = 0, double Latitude = 0, double Height = 0, Guid[]? Ids = null);
 public sealed class EditorViewModel : INotifyPropertyChanged
 {
     public ProjectEditor Editor { get; } = new();
@@ -67,6 +67,7 @@ public sealed class EditorViewModel : INotifyPropertyChanged
             revision = Revision,
             tool = (int)Tool,
             selectedId = Editor.SelectedId,
+            selectedIds = Editor.SelectedIds,
             origin = document.Origin,
             view = document.View,
             status = Status,
@@ -103,6 +104,11 @@ public sealed class EditorViewModel : INotifyPropertyChanged
         {
             if (message.Id is not null && !Editor.Document.Objects.Any(o => o.Id == message.Id)) throw new ArgumentException("Objeto inexistente.");
             VertexIndex = Math.Max(0, message.Vertex); Editor.Select(message.Id); return;
+        }
+        if (message.Type == "selectMany")
+        {
+            if (Tool != EditorTool.Select) throw new ArgumentException("Ação incompatível com a ferramenta atual.");
+            VertexIndex = 0; Editor.SelectMany(message.Ids ?? []); return;
         }
         if (message.Type == "camera")
         {

@@ -53,6 +53,7 @@ public sealed partial class SmokeApplication : Application
         model.Editor.SetActiveLayer(model.Editor.Document.Layers[0].Id);
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
         await VerifyPropertiesAsync(window, model);
+        await VerifyAreaSelectionAsync(window, model);
         VerifyToolbar(window);
         await VerifyFixedPropertiesAsync(window, model);
         await VerifyThemesAsync(window, model);
@@ -75,6 +76,7 @@ public sealed partial class SmokeApplication : Application
             if (response?.Contains("true") == true) { ready = true; break; }
         }
         if (!ready) throw new InvalidOperationException("Globo não inicializou: " + await map.InvokeScript("document.body.innerText"));
+        await VerifyMapAreaSelectionAsync(map, model);
         Console.WriteLine("GLOBE: " + await map.InvokeScript("JSON.stringify(window.algetric.diagnostics())"));
         var store = Field<Algetric.Infrastructure.SqliteTileStore>(window, "tiles");
         var server = Field<Algetric.Infrastructure.LocalMapServer>(window, "server");

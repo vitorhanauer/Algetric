@@ -20,6 +20,7 @@ public sealed class MainWindow : Window
     private readonly LayerPanel layers;
     private readonly Canvas dragOverlay = new() { IsHitTestVisible = false };
     private readonly ObjectPropertiesPanel properties;
+    private readonly TextBlock selectionSummary = new() { Name = "SelectionSummary", TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock status = new() { Margin = new Thickness(12, 6) };
     private readonly NativeWebView map = new();
     private readonly HttpClient client = new() { Timeout = TimeSpan.FromSeconds(30) };
@@ -83,7 +84,7 @@ public sealed class MainWindow : Window
         layerSection.Children.Add(BuildLayersHeading()); layerSection.Children.Add(layers);
         sidebar.Children.Add(new ScrollViewer { Name = "LayerScroll", Content = layerSection });
         var propertyContent = new StackPanel { Spacing = 14, Margin = new Thickness(12) };
-        propertyContent.Children.Add(Heading("Propriedades")); propertyContent.Children.Add(properties);
+        propertyContent.Children.Add(Heading("Propriedades")); propertyContent.Children.Add(properties); propertyContent.Children.Add(selectionSummary);
         var propertySection = new Border
         {
             Name = "PropertiesSection", BorderThickness = new Thickness(0, 1, 0, 0),
@@ -132,7 +133,7 @@ public sealed class MainWindow : Window
         maps.Items.Add(Item("Provedor de mapas…", EditProviderAsync)); maps.Items.Add(Item("Regiões offline…", OfflineAsync));
         var help = new MenuItem { Header = "Ajuda" }; help.Items.Add(Item("Como editar", async () =>
         {
-            await Dialogs.Message(this, "Como editar", "Escolha uma ferramenta e clique para criar.\nLinhas e polígonos: duplo clique ou Enter para concluir; Esc cancela.\nSelecionar: arraste um vértice ou o objeto.\nPlano: Mover + arraste navega; segure Espaço para mover temporariamente.\nSolte Espaço para voltar à ferramenta anterior. Botão direito/central também move; roda ajusta o zoom.\nMapa: arraste para navegar; use o zoom para alternar globo e 2D.\nMedidas planimétricas • limite de 50 km da origem.");
+            await Dialogs.Message(this, "Como editar", "Escolha uma ferramenta e clique para criar.\nLinhas e polígonos: duplo clique ou Enter para concluir; Esc cancela.\nSelecionar: arraste no espaço vazio para selecionar uma área; arraste um vértice ou objeto para mover.\nPlano: Mover + arraste navega; segure Espaço para mover temporariamente.\nSolte Espaço para voltar à ferramenta anterior. Botão direito/central também move; roda ajusta o zoom.\nMapa: use Mover para navegar; use o zoom para alternar globo e 2D.\nMedidas planimétricas • limite de 50 km da origem.");
         }));
         menu.Items.Add(file); menu.Items.Add(edit); menu.Items.Add(maps); menu.Items.Add(BuildAppearanceMenu()); menu.Items.Add(help); return menu;
     }
@@ -178,6 +179,8 @@ public sealed class MainWindow : Window
     private void Refresh()
     {
         Title = model.Title; status.Text = model.Status;
+        selectionSummary.IsVisible = model.Editor.SelectedIds.Count > 1;
+        selectionSummary.Text = $"{model.Editor.SelectedIds.Count} objetos selecionados";
         foreach (var (button, tool) in tools) UiTheme.SetHighlight(button, Avalonia.Controls.Button.BackgroundProperty, model.Tool == tool, "ActiveTool");
         layers.Refresh(); properties.Refresh(); _ = SyncMapAsync();
     }

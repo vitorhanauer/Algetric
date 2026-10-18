@@ -75,7 +75,7 @@ internal sealed partial class LayerPanel : StackPanel
                 (row.Row.Parent as Panel)?.Children.Remove(row.Row); container.Children.Insert(index, row.Row);
             }
             row.Name.Text = shape.Name;
-            UiTheme.SetHighlight(row.Select, Button.BackgroundProperty, shape.Id == model.Editor.SelectedId, "SelectedObject");
+            UiTheme.SetHighlight(row.Select, Button.BackgroundProperty, model.Editor.SelectedIds.Contains(shape.Id), "SelectedObject");
             Avalonia.Automation.AutomationProperties.SetName(row.Delete, $"Excluir {shape.Name}");
             ToolTip.SetTip(row.Delete, $"Excluir {shape.Name}"); index++;
         }

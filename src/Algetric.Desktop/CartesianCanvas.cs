@@ -7,7 +7,7 @@ using System.Globalization;
 
 namespace Algetric.Desktop;
 
-public sealed class CartesianCanvas : Control
+public sealed partial class CartesianCanvas : Control
 {
     private readonly EditorViewModel model;
     private readonly List<LocalPoint> draft = [];
@@ -27,6 +27,7 @@ public sealed class CartesianCanvas : Control
     }
     private void RefreshTool()
     {
+        if (lastTool != model.SelectedTool || model.Tool != EditorTool.Select) CancelAreaSelection();
         if (lastTool != model.SelectedTool) CancelDraft();
         lastTool = model.SelectedTool;
         if (model.Tool == EditorTool.Move) { preview = null; dragId = null; dragVertices = null; }
@@ -46,8 +47,9 @@ public sealed class CartesianCanvas : Control
             var layer = model.Editor.Document.Layers.First(l => l.Id == shape.LayerId);
             if (!layer.Visible) continue;
             var vertices = shape.Id == dragId && preview is not null ? preview : shape.Vertices.ToArray();
-            DrawShape(context, vertices, shape.Kind, Color.Parse(layer.Color), shape.Id == model.Editor.SelectedId);
+            DrawShape(context, vertices, shape.Kind, Color.Parse(layer.Color), model.Editor.SelectedIds.Contains(shape.Id));
         }
+        DrawAreaSelection(context);
         if (draft.Count > 0) DrawShape(context, draft.ToArray(), ShapeKind.Polyline, Color.Parse("#4141FF"), true);
     }
     private void DrawGrid(DrawingContext context)
@@ -100,7 +102,7 @@ public sealed class CartesianCanvas : Control
         if (!properties.IsLeftButtonPressed) return;
         if (model.Tool != EditorTool.Select) { CreateAt(position, e.ClickCount); return; }
         var hit = Hit(position); model.VertexIndex = Math.Max(0, hit.Vertex); model.Editor.Select(hit.Shape?.Id);
-        if (hit.Shape is null) return;
+        if (hit.Shape is null) { BeginAreaSelection(position, e.Pointer); return; }
         pressed = position; dragId = hit.Shape.Id; dragVertex = hit.Vertex; dragVertices = hit.Shape.Vertices.ToArray();
         e.Pointer.Capture(this);
     }
@@ -122,7 +124,7 @@ public sealed class CartesianCanvas : Control
         var points = draft.ToArray();
         model.Try(() => { model.Add((ShapeKind)((int)model.Tool - 1), points); draft.Clear(); }); InvalidateVisual();
     }
-    public void CancelDraft() { draft.Clear(); preview = null; dragId = null; dragVertices = null; InvalidateVisual(); }
+    public void CancelDraft() { CancelAreaSelection(); draft.Clear(); preview = null; dragId = null; dragVertices = null; InvalidateVisual(); }
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e); var position = e.GetPosition(this);
@@ -131,6 +133,7 @@ public sealed class CartesianCanvas : Control
             var delta = position - previous; previous = position;
             model.Editor.UpdateView(View with { CenterX = View.CenterX - delta.X / View.PixelsPerMeter, CenterY = View.CenterY + delta.Y / View.PixelsPerMeter });
         }
+        else if (selectionStart is not null) UpdateAreaSelection(position);
         else if (dragVertices is not null)
         {
             var delta = ToLocal(position); var start = ToLocal(pressed);
@@ -141,11 +144,12 @@ public sealed class CartesianCanvas : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        FinishAreaSelection(e.GetPosition(this));
         if (dragId is { } id && preview is not null) model.Try(() => model.Replace(id, preview));
         preview = null; dragVertices = null; dragId = null; panning = false; e.Pointer.Capture(null); UpdateCursor(); InvalidateVisual();
     }
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
-    { base.OnPointerCaptureLost(e); preview = null; dragVertices = null; dragId = null; panning = false; UpdateCursor(); InvalidateVisual(); }
+    { base.OnPointerCaptureLost(e); CancelAreaSelection(); preview = null; dragVertices = null; dragId = null; panning = false; UpdateCursor(); InvalidateVisual(); }
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e); var position = e.GetPosition(this); var before = ToLocal(position);

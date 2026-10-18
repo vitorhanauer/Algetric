@@ -8,7 +8,8 @@ public sealed class ProjectEditor
     private readonly Stack<ProjectDocument> redo = new();
     private ProjectDocument saved;
     public ProjectDocument Document { get; private set; }
-    public Guid? SelectedId { get; private set; }
+    public ImmutableHashSet<Guid> SelectedIds { get; private set; } = [];
+    public Guid? SelectedId => SelectedIds.Count == 1 ? SelectedIds.Single() : null;
     public Guid? ActiveLayerId { get; private set; }
     public bool CanUndo => undo.Count > 0;
     public bool CanRedo => redo.Count > 0;
@@ -17,13 +18,27 @@ public sealed class ProjectEditor
     public event Action? ViewChanged;
 
     public ProjectEditor() { Document = ProjectDocument.Empty(); saved = Document; ActiveLayerId = Document.Layers.FirstOrDefault()?.Id; }
-    public void Select(Guid? id) { SelectedId = id; Changed?.Invoke(); }
+    public void Select(Guid? id) => SelectMany(id is { } selected ? [selected] : []);
+    public void SelectMany(IEnumerable<Guid> ids)
+    {
+        SelectedIds = ids.Intersect(Document.Objects.Select(shape => shape.Id)).ToImmutableHashSet();
+        Changed?.Invoke();
+    }
+    public void SelectArea(LocalPoint start, LocalPoint end)
+    {
+        var left = Math.Min(start.X, end.X); var right = Math.Max(start.X, end.X);
+        var bottom = Math.Min(start.Y, end.Y); var top = Math.Max(start.Y, end.Y);
+        var visibleLayers = Document.Layers.Where(layer => layer.Visible).Select(layer => layer.Id).ToHashSet();
+        SelectMany(Document.Objects.Where(shape => visibleLayers.Contains(shape.LayerId) &&
+            shape.Vertices.All(point => point.X >= left && point.X <= right && point.Y >= bottom && point.Y <= top))
+            .Select(shape => shape.Id));
+    }
     public void MarkSaved() { saved = Document; Changed?.Invoke(); }
     public void Load(ProjectDocument document)
     {
         GeometryRules.ValidateDocument(document);
         Document = saved = document with { OriginLocked = document.OriginLocked || document.Objects.Length > 0 };
-        undo.Clear(); redo.Clear(); SelectedId = null; ActiveLayerId = document.Layers.FirstOrDefault()?.Id; Changed?.Invoke();
+        undo.Clear(); redo.Clear(); SelectedIds = []; ActiveLayerId = document.Layers.FirstOrDefault()?.Id; Changed?.Invoke();
     }
     public void SetOrigin(GeographicPoint origin)
     {
@@ -36,7 +51,7 @@ public sealed class ProjectEditor
         var shape = new GeometryObject(Guid.NewGuid(), $"{Name(kind)} {Document.Objects.Length + 1}",
             layerId, kind, vertices.ToImmutableArray());
         GeometryRules.Validate(shape);
-        SelectedId = shape.Id; Commit(Document with { Objects = Document.Objects.Add(shape), OriginLocked = true });
+        SelectedIds = [shape.Id]; Commit(Document with { Objects = Document.Objects.Add(shape), OriginLocked = true });
         return shape;
     }
     public void ReplaceVertices(Guid id, IEnumerable<LocalPoint> vertices)
@@ -58,13 +73,12 @@ public sealed class ProjectEditor
     }
     public void DeleteSelected()
     {
-        if (SelectedId is not { } id) return;
-        Delete(id);
+        if (SelectedIds.Count == 0) return;
+        Commit(Document with { Objects = Document.Objects.RemoveAll(shape => SelectedIds.Contains(shape.Id)) });
     }
     public void Delete(Guid id)
     {
         if (!Document.Objects.Any(o => o.Id == id)) return;
-        if (SelectedId == id) SelectedId = null;
         Commit(Document with { Objects = Document.Objects.RemoveAll(o => o.Id == id) });
     }
     public void AddLayer(string name, string color)
@@ -77,7 +91,6 @@ public sealed class ProjectEditor
         if (!Document.Layers.Any(layer => layer.Id == layerId)) return;
         var layers = Document.Layers.RemoveAll(layer => layer.Id == layerId);
         var objects = Document.Objects.RemoveAll(shape => shape.LayerId == layerId);
-        if (!objects.Any(shape => shape.Id == SelectedId)) SelectedId = null;
         if (ActiveLayerId == layerId) ActiveLayerId = layers.FirstOrDefault()?.Id;
         Commit(Document with { Layers = layers, Objects = objects });
     }
@@ -109,16 +122,18 @@ public sealed class ProjectEditor
         if (!source.TryPop(out var document)) return;
         target.Push(Document);
         Document = document with { OriginLocked = Document.OriginLocked || document.OriginLocked };
-        if (!Document.Objects.Any(o => o.Id == SelectedId)) SelectedId = null;
+        PruneSelection();
         if (!Document.Layers.Any(l => l.Id == ActiveLayerId)) ActiveLayerId = Document.Layers.FirstOrDefault()?.Id;
         Changed?.Invoke();
     }
     private void Commit(ProjectDocument next, Guid? activeLayerId = null)
     {
         GeometryRules.ValidateDocument(next); undo.Push(Document); redo.Clear(); Document = next;
+        PruneSelection();
         if (activeLayerId is { } layerId) ActiveLayerId = layerId;
         Changed?.Invoke();
     }
+    private void PruneSelection() => SelectedIds = SelectedIds.Intersect(Document.Objects.Select(shape => shape.Id));
     private static string Name(ShapeKind kind) => kind switch
     { ShapeKind.Point => "Ponto", ShapeKind.Segment => "Segmento", ShapeKind.Polyline => "Linha", _ => "Polígono" };
 }

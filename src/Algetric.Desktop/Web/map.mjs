@@ -1,6 +1,6 @@
-import {desiredMode, acceptState} from './bridge.mjs';
+import {desiredMode, acceptState, objectsInScreenArea} from './bridge.mjs';
 const notice=document.querySelector('#notice');
-let viewer,state,sequence=0,pending=false,morphing=false,draft=[],drag=null,providerId,mode='3D',mapMissing=false,pointerHeld=false;
+let viewer,state,sequence=0,pending=false,morphing=false,draft=[],drag=null,area=null,providerId,mode='3D',mapMissing=false,pointerHeld=false;
 const C=globalThis.Cesium;
 function report(message){notice.textContent=message;}
 function geos(points){return points.map(p=>C.Cartesian3.fromDegrees(p.longitude,p.latitude));}
@@ -23,9 +23,11 @@ async function send(type,payload={}){
 function sync(next){
   if(!acceptState(state,next))return;
   const reset=!state || next.session!==state.session;
-  if(reset){sequence=Date.now()*1000;draft=[];drag=null;viewer.scene.completeMorph();viewer.scene.morphTo3D(0);mode='3D';morphing=false;}
-  if(state?.tool!==next.tool)draft=[];
+  if(reset){clearAreaSelection();sequence=Date.now()*1000;draft=[];drag=null;viewer.scene.completeMorph();viewer.scene.morphTo3D(0);mode='3D';morphing=false;}
+  if(state?.tool!==next.tool){draft=[];clearAreaSelection();}
   state=next;
+  viewer.scene.screenSpaceCameraController.enableRotate=next.tool!==0;
+  viewer.scene.screenSpaceCameraController.enableTranslate=next.tool!==0;
   if(reset)viewer.camera.setView({destination:C.Cartesian3.fromDegrees(next.view.longitude,next.view.latitude,next.view.height)});
   configureProvider();render();
   report(`${mode==='3D'?'Globo 3D':'Mapa 2D'} • ${next.status}${!next.provider?' • Configure um provedor de mapas.':mapMissing?' • Mapa base indisponível nesta área.':''}`);
@@ -43,10 +45,10 @@ function configureProvider(){
 function render(){
   if(!viewer||!state)return;viewer.entities.removeAll();
   for(const object of state.objects){
-    const selected=object.id===state.selectedId;
+    const selected=(state.selectedIds??[state.selectedId]).includes(object.id);
     const color=C.Color.fromCssColorString(object.color);
     const vertices=geos(drag?.id===object.id?drag.vertices:object.vertices);
-    if(object.kind===0)viewer.entities.add({id:object.id,position:vertices[0],point:{pixelSize:10,color,outlineColor:C.Color.WHITE,outlineWidth:2}});
+    if(object.kind===0)viewer.entities.add({id:object.id,position:vertices[0],point:{pixelSize:selected?14:10,color,outlineColor:selected?C.Color.ROYALBLUE:C.Color.WHITE,outlineWidth:2}});
     else if(object.kind===3)viewer.entities.add({id:object.id,polygon:{hierarchy:vertices,material:color.withAlpha(.22)},
       polyline:{positions:[...vertices,vertices[0]],width:selected?4:2,material:color}});
     else viewer.entities.add({id:object.id,polyline:{positions:vertices,width:selected?4:2,material:color}});
@@ -70,7 +72,7 @@ async function finish(){
   const before=state.revision;const next=await send('create',{vertices:draft});
   if(next && next.revision>before){draft=[];render();}
 }
-function cancel(){draft=[];drag=null;viewer.scene.screenSpaceCameraController.enableInputs=true;render();}
+function cancel(){clearAreaSelection();draft=[];drag=null;viewer.scene.screenSpaceCameraController.enableInputs=true;render();}
 function centerAndHeight(){
   const center=positionAt(new C.Cartesian2(viewer.canvas.clientWidth/2,viewer.canvas.clientHeight/2));
   return {...(center??{longitude:state.view.longitude,latitude:state.view.latitude}),height:viewer.camera.positionCartographic.height};
@@ -85,6 +87,34 @@ function transition(){
     morphing=false;viewer.scene.screenSpaceCameraController.enableInputs=true;report(mode==='2D'?'Mapa 2D':'Globo 3D');
   });
   if(next==='2D')viewer.scene.morphTo2D(.8);else viewer.scene.morphTo3D(.8);
+}
+function clearAreaSelection(){
+  area=null;document.querySelector('#selection-area')?.remove();
+  if(viewer)viewer.scene.screenSpaceCameraController.enableInputs=true;
+}
+function beginAreaSelection(position){
+  area={start:C.Cartesian2.clone(position),end:C.Cartesian2.clone(position)};
+  const rectangle=document.createElement('div');rectangle.id='selection-area';
+  rectangle.style.cssText='position:absolute;pointer-events:none;border:1.5px solid #1e90ff;background:#1e90ff26;box-sizing:border-box;z-index:5';
+  viewer.container.append(rectangle);
+  viewer.scene.screenSpaceCameraController.enableInputs=false;
+}
+function updateAreaSelection(position){
+  area.end=C.Cartesian2.clone(position);
+  const style=document.querySelector('#selection-area').style;
+  style.left=`${Math.min(area.start.x,position.x)}px`;style.top=`${Math.min(area.start.y,position.y)}px`;
+  style.width=`${Math.abs(area.start.x-position.x)}px`;style.height=`${Math.abs(area.start.y-position.y)}px`;
+}
+async function finishAreaSelection(position){
+  const selection=area;clearAreaSelection();
+  const occluder=new C.EllipsoidalOccluder(viewer.scene.globe.ellipsoid,viewer.camera.positionWC);
+  const ids=C.Cartesian2.distance(selection.start,position)<4?[]:
+    objectsInScreenArea(state.objects,selection.start,position,vertex=>{
+      const world=C.Cartesian3.fromDegrees(vertex.longitude,vertex.latitude);
+      if(viewer.scene.mode===C.SceneMode.SCENE3D && !occluder.isPointVisible(world))return null;
+      return C.SceneTransforms.worldToWindowCoordinates(viewer.scene,world);
+    });
+  await send('selectMany',{ids});
 }
 function wireEditing(){
   const handler=new C.ScreenSpaceEventHandler(viewer.canvas);
@@ -106,7 +136,7 @@ function wireEditing(){
     const picked=viewer.scene.pick(event.position)?.id?.id;
     let id=typeof picked==='string'?picked:null,vertex=-1;
     if(id?.startsWith('vertex:')){const parts=id.split(':');id=parts[1];vertex=Number(parts[2]);}
-    const object=state.objects.find(o=>o.id===id);if(!object){await send('select',{id:null});return;}
+    const object=state.objects.find(o=>o.id===id);if(!object){beginAreaSelection(event.position);return;}
     const start=positionAt(event.position);if(!start)return;
     pointerHeld=true;viewer.scene.screenSpaceCameraController.enableInputs=false;
     await send('select',{id:object.id,vertex:Math.max(0,vertex)});
@@ -114,12 +144,14 @@ function wireEditing(){
     drag={id:object.id,vertex,start,original:object.vertices.map(p=>({...p})),vertices:object.vertices.map(p=>({...p})),changed:false};
   },C.ScreenSpaceEventType.LEFT_DOWN);
   handler.setInputAction(event=>{
+    if(area){updateAreaSelection(event.endPosition);return;}
     if(!drag||morphing)return;const point=positionAt(event.endPosition);if(!point)return;
     drag.vertices=drag.original.map((p,i)=>drag.vertex<0||drag.vertex===i?{
       latitude:p.latitude+point.latitude-drag.start.latitude,longitude:p.longitude+point.longitude-drag.start.longitude}:p);
     drag.changed=true;render();
   },C.ScreenSpaceEventType.MOUSE_MOVE);
-  handler.setInputAction(async()=>{
+  handler.setInputAction(async event=>{
+    if(area){await finishAreaSelection(event.position);return;}
     pointerHeld=false;viewer.scene.screenSpaceCameraController.enableInputs=true;
     const edited=drag;drag=null;if(edited?.changed)await send('replace',{id:edited.id,vertices:edited.vertices});render();
   },C.ScreenSpaceEventType.LEFT_UP);
@@ -142,7 +174,7 @@ try{
   viewer.scene.globe.baseColor=C.Color.fromCssColorString('#DDE7EC');
   viewer.scene.backgroundColor=C.Color.fromCssColorString('#EEF3F8');
   viewer.scene.globe.enableLighting=false;
-  globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
+  globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,selectedIds:state?.selectedIds,areaSelecting:!!area,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
   wireEditing();sync(await(await fetch('state')).json());
   viewer.camera.changed.addEventListener(transition);viewer.camera.percentageChanged=.05;
   viewer.camera.moveEnd.addEventListener(()=>{if(!morphing&&state)void send('camera',centerAndHeight());});
