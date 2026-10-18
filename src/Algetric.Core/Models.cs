@@ -4,7 +4,7 @@ namespace Algetric.Core;
 
 public readonly record struct LocalPoint(double X, double Y);
 public readonly record struct GeographicPoint(double Latitude, double Longitude);
-public enum ShapeKind { Point, Segment, Polyline, Polygon }
+public enum ShapeKind { Point, Segment, Polyline, Polygon, CoveragePath }
 public sealed record Layer(Guid Id, string Name, string Color, bool Visible = true);
 public sealed record GeometryObject(Guid Id, string Name, Guid LayerId, ShapeKind Kind,
     ImmutableArray<LocalPoint> Vertices);

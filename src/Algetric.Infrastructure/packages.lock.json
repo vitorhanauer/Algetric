@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "BoustrophedonDotnetWrapper": {
+        "type": "Direct",
+        "requested": "[0.1.3, )",
+        "resolved": "0.1.3",
+        "contentHash": "si35/OwyUtKQRTYR1RSoWd2hItqpIuGd0MiL7CKbYy6PApW3VbtlHi65kDoAyGBrY9aHDa4uHyXnIOSQtfZovA=="
+      },
       "Microsoft.Data.Sqlite": {
         "type": "Direct",
         "requested": "[10.0.11, )",
@@ -76,6 +82,12 @@
       }
     },
     "net10.0/linux-x64": {
+      "BoustrophedonDotnetWrapper": {
+        "type": "Direct",
+        "requested": "[0.1.3, )",
+        "resolved": "0.1.3",
+        "contentHash": "si35/OwyUtKQRTYR1RSoWd2hItqpIuGd0MiL7CKbYy6PApW3VbtlHi65kDoAyGBrY9aHDa4uHyXnIOSQtfZovA=="
+      },
       "SQLite": {
         "type": "Transitive",
         "resolved": "3.53.4",
@@ -83,6 +95,12 @@
       }
     },
     "net10.0/win-x64": {
+      "BoustrophedonDotnetWrapper": {
+        "type": "Direct",
+        "requested": "[0.1.3, )",
+        "resolved": "0.1.3",
+        "contentHash": "si35/OwyUtKQRTYR1RSoWd2hItqpIuGd0MiL7CKbYy6PApW3VbtlHi65kDoAyGBrY9aHDa4uHyXnIOSQtfZovA=="
+      },
       "SQLite": {
         "type": "Transitive",
         "resolved": "3.53.4",

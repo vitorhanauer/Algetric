@@ -19,12 +19,13 @@ public static class GeometryRules
         var count = shape.Vertices.Length;
         if (!Enum.IsDefined(shape.Kind) || (shape.Kind == ShapeKind.Point ? count != 1
             : shape.Kind == ShapeKind.Segment ? count != 2
-            : shape.Kind == ShapeKind.Polyline ? count < 2 : count < 3))
+            : shape.Kind is ShapeKind.Polyline or ShapeKind.CoveragePath ? count < 2 : count < 3))
             throw new ArgumentException("Quantidade de vértices incompatível com o objeto.");
-        if (shape.Vertices.Distinct().Count() != count)
+        if (shape.Kind != ShapeKind.CoveragePath && shape.Vertices.Distinct().Count() != count)
             throw new ArgumentException("Vértices repetidos não são permitidos.");
         var geometry = ToGeometry(shape);
-        if (!geometry.IsValid || (shape.Kind == ShapeKind.Polygon && geometry.Area <= 0))
+        if (!geometry.IsValid || (shape.Kind == ShapeKind.Polygon && geometry.Area <= 0)
+            || (shape.Kind == ShapeKind.CoveragePath && geometry.Length <= 0))
             throw new ArgumentException("Polígono degenerado ou com autointerseção.");
     }
 

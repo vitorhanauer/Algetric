@@ -55,6 +55,17 @@ public sealed class ProjectEditor
         SelectedIds = [shape.Id]; Commit(Document with { Objects = Document.Objects.Add(shape), OriginLocked = true });
         return shape;
     }
+    public GeometryObject AddCoveragePath(Guid polygonId, IEnumerable<LocalPoint> points)
+    {
+        var polygon = Document.Objects.FirstOrDefault(shape => shape.Id == polygonId && shape.Kind == ShapeKind.Polygon)
+            ?? throw new ArgumentException("O polígono selecionado não existe mais.");
+        var path = new GeometryObject(Guid.NewGuid(), $"Caminho de {polygon.Name}", polygon.LayerId,
+            ShapeKind.CoveragePath, points.ToImmutableArray());
+        GeometryRules.Validate(path);
+        SelectedIds = [path.Id];
+        Commit(Document with { Objects = Document.Objects.Add(path), OriginLocked = true });
+        return path;
+    }
     public void ReplaceVertices(Guid id, IEnumerable<LocalPoint> vertices)
     {
         var index = Document.Objects.FindIndex(o => o.Id == id);
