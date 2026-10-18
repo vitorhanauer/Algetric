@@ -66,12 +66,17 @@ internal static class Dialogs
         var delete = new Button { Name = "DeleteLayer", Content = "Excluir camada", Foreground = Brushes.DarkRed };
         delete.Click += async (_, _) =>
         {
-            var count = model.Editor.Document.Objects.Count(shape => shape.LayerId == layer.Id);
-            if (count > 0 && await Choose(window, "Excluir camada",
-                $"Excluir a camada \"{layer.Name}\" e seus {count} objeto(s)?\nVocê pode desfazer esta ação.", ["Excluir", "Cancelar"]) != "Excluir") return;
-            model.Editor.DeleteLayer(layer.Id); window.Close();
+            if (await DeleteLayer(window, model, layer)) window.Close();
         };
         panel.Children.Add(delete);
+    }
+    public static async Task<bool> DeleteLayer(Window owner, EditorViewModel model, Layer layer)
+    {
+        var count = model.Editor.Document.Objects.Count(shape => shape.LayerId == layer.Id);
+        if (count > 0 && await Choose(owner, "Excluir camada",
+            $"Excluir a camada \"{layer.Name}\" e seus {count} objeto(s)?\nVocê pode desfazer esta ação.", ["Excluir", "Cancelar"]) != "Excluir") return false;
+        model.Editor.DeleteLayer(layer.Id);
+        return true;
     }
     public static async Task<bool> EditProvider(Window owner, ProviderSettings settings, TileProvider? provider)
     {

@@ -14,14 +14,15 @@ internal sealed partial class LayerPanel : StackPanel
     private sealed record ObjectRow(Grid Row, Button Select, TextBlock Name, Button Delete);
     private readonly EditorViewModel model;
     private readonly Action<Layer> editLayer;
+    private readonly Action<Layer> deleteLayer;
     private readonly Canvas dragOverlay;
     private readonly Dictionary<Guid, LayerRow> layerRows = [];
     private readonly Dictionary<Guid, ObjectRow> objectRows = [];
     private bool refreshing;
 
-    public LayerPanel(EditorViewModel model, Canvas dragOverlay, Action<Layer> editLayer)
+    public LayerPanel(EditorViewModel model, Canvas dragOverlay, Action<Layer> editLayer, Action<Layer> deleteLayer)
     {
-        this.model = model; this.dragOverlay = dragOverlay; this.editLayer = editLayer;
+        this.model = model; this.dragOverlay = dragOverlay; this.editLayer = editLayer; this.deleteLayer = deleteLayer;
         Name = "LayerTree"; Spacing = 6; Focusable = true;
         dragOverlay.Children.Add(dragPreview);
         AddHandler(PointerMovedEvent, OnDragMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
@@ -83,19 +84,33 @@ internal sealed partial class LayerPanel : StackPanel
     {
         var name = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = FontWeight.SemiBold };
         var select = ActionButton(name, () => model.Editor.SetActiveLayer(id)); select.Name = $"SelectLayer_{id:N}";
-        ToolTip.SetTip(select, "Usar esta camada para novos objetos");
+        ToolTip.SetTip(select, "Clique para ativar; duplo clique para editar; botão direito para opções");
+        ConfigureLayerActions(select, id);
         var visible = new CheckBox { VerticalAlignment = VerticalAlignment.Center };
         ToolTip.SetTip(visible, "Mostrar ou ocultar camada");
         visible.IsCheckedChanged += (_, _) => { if (!refreshing) model.Try(() => model.Editor.UpdateLayer(CurrentLayer(id) with { Visible = visible.IsChecked == true })); };
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
-        var edit = ActionButton("⋯", () => editLayer(CurrentLayer(id))); ToolTip.SetTip(edit, "Editar camada");
-        Grid.SetColumn(select, 1); Grid.SetColumn(edit, 2);
-        header.Children.Add(visible); header.Children.Add(select); header.Children.Add(edit);
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        Grid.SetColumn(select, 1);
+        header.Children.Add(visible); header.Children.Add(select);
         var objects = new StackPanel { Name = $"LayerObjects_{id:N}", Margin = new Thickness(18, 0, 0, 0), Spacing = 2 };
         var empty = new TextBlock { Text = "Sem objetos", Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(24, 4, 0, 6) };
         var content = new StackPanel { Spacing = 2 }; content.Children.Add(header); content.Children.Add(objects); content.Children.Add(empty);
         var card = new Border { Name = $"Layer_{id:N}", Child = content, Padding = new Thickness(4), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1), Background = Brushes.Transparent };
         return new(card, select, name, visible, objects, empty);
+    }
+    private void ConfigureLayerActions(Button select, Guid id)
+    {
+        select.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.ClickCount != 2 || !e.GetCurrentPoint(select).Properties.IsLeftButtonPressed) return;
+            e.Handled = true;
+            editLayer(CurrentLayer(id));
+        }, RoutingStrategies.Tunnel);
+        var edit = new MenuItem { Header = "Editar" };
+        edit.Click += (_, _) => editLayer(CurrentLayer(id));
+        var delete = new MenuItem { Header = "Excluir" };
+        delete.Click += (_, _) => deleteLayer(CurrentLayer(id));
+        select.ContextMenu = new ContextMenu { Items = { edit, delete } };
     }
     private ObjectRow CreateObjectRow(Guid id)
     {

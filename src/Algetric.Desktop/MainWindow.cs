@@ -38,7 +38,8 @@ public sealed class MainWindow : Window
         tiles = new(Path.Combine(dataDirectory, "maps.sqlite")); settings = new(dataDirectory);
         canvas = new(model);
         properties = new(model, canvas.InvalidateVisual);
-        layers = new(model, dragOverlay, layer => _ = RunAsync(() => EditLayerAsync(layer)));
+        layers = new(model, dragOverlay, layer => _ = RunAsync(() => EditLayerAsync(layer)),
+            layer => _ = RunAsync(async () => { await Dialogs.DeleteLayer(this, model, layer); }));
         server = new(Path.Combine(AppContext.BaseDirectory, "Web"), tiles, client);
         server.GetStateAsync = async () => await Dispatcher.UIThread.InvokeAsync(() => { mapReady = true; return model.MapState(); });
         server.HandleMessageAsync = async json => await Dispatcher.UIThread.InvokeAsync(() => model.HandleMessage(json));

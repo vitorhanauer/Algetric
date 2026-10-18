@@ -18,11 +18,17 @@ public sealed partial class SmokeApplication
     private static async Task<Window> OpenLayerEditorAsync(MainWindow window, Guid layerId)
     {
         var card = LayerControl<Border>(window, $"Layer_{layerId:N}");
-        card.GetVisualDescendants().OfType<Button>().Single(button => button.Content is string text && text == "⋯").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        CheckLayer(!card.GetVisualDescendants().OfType<Button>().Any(button => Equals(button.Content, "⋯")), "Layers must not have an ellipsis button.");
+        var select = LayerControl<Button>(window, $"SelectLayer_{layerId:N}");
+        var position = select.TranslatePoint(new Point(12, 12), window)!.Value;
+        var pointer = new Avalonia.Input.Pointer(401, PointerType.Mouse, true);
+        select.RaiseEvent(new PointerPressedEventArgs(select, pointer, window, position, 0,
+            new PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 2));
         await Task.Delay(100); return LayerDialog("Camada");
     }
     private static async Task VerifyLayerDeletionAsync(MainWindow window, EditorViewModel model)
     {
+        await VerifyLayerContextMenuAsync(window, model);
         var original = model.Editor.Document; var layer = original.Layers[0];
         var dialog = await OpenLayerEditorAsync(window, layer.Id);
         ClickDialogButton(dialog, "DeleteLayer"); await Task.Delay(50);
@@ -38,6 +44,51 @@ public sealed partial class SmokeApplication
         CheckLayer(model.Editor.Document.Layers.Contains(layer) && model.Editor.Document.Objects.Length == original.Objects.Length, "Layer deletion must undo in one step.");
         model.Load(original); model.Editor.Select(original.Objects[0].Id);
         Console.WriteLine("LAYER DELETE PASS: populated-layer confirmation, cancel, deletion and undo.");
+    }
+    private static async Task<ContextMenu> OpenLayerContextMenuAsync(MainWindow window, Guid id)
+    {
+        var select = LayerControl<Button>(window, $"SelectLayer_{id:N}");
+        select.RaiseEvent(new ContextRequestedEventArgs { RoutedEvent = InputElement.ContextRequestedEvent });
+        await Task.Delay(50);
+        var menu = select.ContextMenu;
+        CheckLayer(menu?.IsOpen == true, "Requesting the layer context menu must open it.");
+        CheckLayer(menu!.Items.OfType<MenuItem>().Select(item => item.Header).SequenceEqual(new[] { "Editar", "Excluir" }),
+            "The layer context menu must offer Edit and Delete.");
+        return menu;
+    }
+    private static void ClickLayerMenuItem(ContextMenu menu, string header)
+    {
+        menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, header)).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        menu.Close();
+    }
+    private static async Task VerifyLayerContextMenuAsync(MainWindow window, EditorViewModel model)
+    {
+        var original = model.Editor.Document; var layer = original.Layers[0];
+        var menu = await OpenLayerContextMenuAsync(window, layer.Id);
+        ClickLayerMenuItem(menu, "Editar"); await Task.Delay(100);
+        var dialog = LayerDialog("Camada");
+        CheckLayer(dialog.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "LayerName").Text == layer.Name,
+            "Context editing must open the chosen layer.");
+        dialog.Close();
+        menu = await OpenLayerContextMenuAsync(window, layer.Id);
+        ClickLayerMenuItem(menu, "Excluir"); await Task.Delay(50);
+        var confirmation = LayerDialog("Excluir camada");
+        confirmation.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Cancelar")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Task.Delay(50);
+        CheckLayer(ReferenceEquals(original, model.Editor.Document), "Cancelling context deletion must preserve the project.");
+        menu = await OpenLayerContextMenuAsync(window, layer.Id);
+        ClickLayerMenuItem(menu, "Excluir"); await Task.Delay(50);
+        confirmation = LayerDialog("Excluir camada");
+        confirmation.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Excluir")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Task.Delay(50);
+        CheckLayer(!model.Editor.Document.Layers.Any(item => item.Id == layer.Id), "Context deletion must remove the chosen layer.");
+        model.Editor.Undo();
+        CheckLayer(model.Editor.Document.Layers.Contains(layer) && model.Editor.Document.Objects.SequenceEqual(original.Objects), "Context deletion must undo in one step.");
+        menu = await OpenLayerContextMenuAsync(window, original.Layers[1].Id);
+        ClickLayerMenuItem(menu, "Excluir"); await Task.Delay(50);
+        CheckLayer(model.Editor.Document.Layers.Length == original.Layers.Length - 1, "Empty layers must delete without confirmation.");
+        model.Load(original); model.Editor.Select(original.Objects[0].Id);
+        Console.WriteLine("LAYER CONTEXT PASS: edit, deletion confirmation, cancel, undo and empty-layer deletion.");
     }
     private static async Task VerifyLayerColorsAsync(MainWindow window, EditorViewModel model)
     {
