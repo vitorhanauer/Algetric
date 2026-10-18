@@ -48,6 +48,7 @@ public sealed partial class SmokeApplication : Application
         var model = Field<EditorViewModel>(window, "model"); var map = Field<NativeWebView>(window, "map");
         if (model.Editor.Document.Layers.Length != 0 || model.Editor.ActiveLayerId is not null)
             throw new InvalidOperationException("New projects must start with no layers.");
+        await VerifyMissingLayerWarningAsync(window, model);
         model.Editor.AddLayer("Camada 1", "#009CA6");
         model.Editor.AddLayer("Camada 2", "#FF791F");
         model.Editor.SetActiveLayer(model.Editor.Document.Layers[0].Id);
@@ -76,6 +77,7 @@ public sealed partial class SmokeApplication : Application
             if (response?.Contains("true") == true) { ready = true; break; }
         }
         if (!ready) throw new InvalidOperationException("Globo não inicializou: " + await map.InvokeScript("document.body.innerText"));
+        await VerifyMapWarningsAndShortcutsAsync(window, map, model);
         await VerifyMapAreaSelectionAsync(map, model);
         Console.WriteLine("GLOBE: " + await map.InvokeScript("JSON.stringify(window.algetric.diagnostics())"));
         var store = Field<Algetric.Infrastructure.SqliteTileStore>(window, "tiles");

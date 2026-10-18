@@ -25,6 +25,7 @@ public sealed class EditorViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? Changed;
     public event Action<string>? FileActionRequested;
+    public event Action<string>? WarningRequested;
     public EditorViewModel() { Editor.Changed += OnChanged; Editor.ViewChanged += () => PropertyChanged?.Invoke(this, new(null)); }
     private void OnChanged()
     {
@@ -42,10 +43,17 @@ public sealed class EditorViewModel : INotifyPropertyChanged
     {
         try { action(); SetStatus("Pronto • Medidas planimétricas"); }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException)
-        { SetStatus(error.Message); }
+        { WarningRequested?.Invoke(error.Message); }
+    }
+    public bool EnsureActiveLayer()
+    {
+        if (Editor.ActiveLayerId is not null) return true;
+        WarningRequested?.Invoke(ProjectEditor.MissingLayerMessage);
+        return false;
     }
     public void Add(ShapeKind kind, IEnumerable<LocalPoint> vertices)
     {
+        if (Editor.ActiveLayerId is null) throw new InvalidOperationException(ProjectEditor.MissingLayerMessage);
         var points = vertices.ToArray(); ValidateGeographic(points); VertexIndex = 0; Editor.Add(kind, points);
     }
     public void Replace(Guid id, IEnumerable<LocalPoint> vertices)
@@ -68,6 +76,7 @@ public sealed class EditorViewModel : INotifyPropertyChanged
             tool = (int)Tool,
             selectedId = Editor.SelectedId,
             selectedIds = Editor.SelectedIds,
+            canCreateObject = Editor.ActiveLayerId is not null,
             origin = document.Origin,
             view = document.View,
             status = Status,
@@ -97,6 +106,7 @@ public sealed class EditorViewModel : INotifyPropertyChanged
     private void Apply(BridgeMessage message)
     {
         if (message.Type is "save" or "open" or "new") { FileActionRequested?.Invoke(message.Type); return; }
+        if (message.Type == "requireLayer") { EnsureActiveLayer(); return; }
         if (message.Type == "delete") { Editor.DeleteSelected(); return; }
         if (message.Type == "undo") { Editor.Undo(); return; }
         if (message.Type == "redo") { Editor.Redo(); return; }

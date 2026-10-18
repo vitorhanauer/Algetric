@@ -17,6 +17,7 @@ public sealed class MainWindow : Window
 {
     private readonly EditorViewModel model = new();
     private readonly CartesianCanvas canvas;
+    private readonly WarningToast warningToast;
     private readonly LayerPanel layers;
     private readonly Canvas dragOverlay = new() { IsHitTestVisible = false };
     private readonly ObjectPropertiesPanel properties;
@@ -38,7 +39,8 @@ public sealed class MainWindow : Window
         dataDirectory = storageDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "algetric");
         Directory.CreateDirectory(dataDirectory);
         tiles = new(Path.Combine(dataDirectory, "maps.sqlite")); settings = new(dataDirectory);
-        canvas = new(model);
+        canvas = new(model); warningToast = new();
+        model.WarningRequested += warningToast.Show;
         properties = new(model, canvas.InvalidateVisual);
         layers = new(model, dragOverlay, layer => _ = RunAsync(() => EditLayerAsync(layer)),
             layer => _ = RunAsync(async () => { await Dialogs.DeleteLayer(this, model, layer); }));
@@ -56,7 +58,7 @@ public sealed class MainWindow : Window
         AddHandler(KeyUpEvent, OnMoveKeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
         Deactivated += (_, _) => { model.EndTemporaryMove(); layers.CancelDrag(); };
         Closing += OnClosing;
-        Closed += (_, _) => { server.Dispose(); client.Dispose(); };
+        Closed += (_, _) => { warningToast.IsOpen = false; server.Dispose(); client.Dispose(); };
         Opened += async (_, _) => await RunAsync(LoadProviderAsync);
         Refresh();
     }
@@ -73,7 +75,7 @@ public sealed class MainWindow : Window
         tabs.Items.Add(new TabItem { Header = "Plano cartesiano", Content = canvas });
         tabs.Items.Add(new TabItem { Header = "🌐 Mapa", Content = map });
         tabs.SelectionChanged += (_, _) => { layers.CancelDrag(); model.EndTemporaryMove(); canvas.CancelDraft(); }; root.Children.Add(tabs);
-        var overlay = new Grid(); overlay.Children.Add(root); overlay.Children.Add(dragOverlay);
+        var overlay = new Grid(); warningToast.PlacementTarget = overlay; overlay.Children.Add(root); overlay.Children.Add(dragOverlay); overlay.Children.Add(warningToast);
         return overlay;
     }
     private Control BuildSidebar()

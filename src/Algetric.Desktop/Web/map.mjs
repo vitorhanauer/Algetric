@@ -121,6 +121,7 @@ function wireEditing(){
   viewer.screenSpaceEventHandler.removeInputAction(C.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
   handler.setInputAction(async event=>{
     if(pending||morphing||!state)return;
+    if(state.tool>=1 && state.tool<=4 && !state.canCreateObject){await send('requireLayer');return;}
     const point=positionAt(event.position);if(!point)return;
     if(state.tool===5){await send('origin',{vertices:[point]});return;}
     if(state.tool===1){await send('create',{vertices:[point]});return;}
@@ -174,7 +175,7 @@ try{
   viewer.scene.globe.baseColor=C.Color.fromCssColorString('#DDE7EC');
   viewer.scene.backgroundColor=C.Color.fromCssColorString('#EEF3F8');
   viewer.scene.globe.enableLighting=false;
-  globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,selectedIds:state?.selectedIds,areaSelecting:!!area,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
+  globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,pending,tool:state?.tool,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,selectedIds:state?.selectedIds,areaSelecting:!!area,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
   wireEditing();sync(await(await fetch('state')).json());
   viewer.camera.changed.addEventListener(transition);viewer.camera.percentageChanged=.05;
   viewer.camera.moveEnd.addEventListener(()=>{if(!morphing&&state)void send('camera',centerAndHeight());});

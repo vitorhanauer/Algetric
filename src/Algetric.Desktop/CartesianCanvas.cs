@@ -108,6 +108,7 @@ public sealed partial class CartesianCanvas : Control
     }
     private void CreateAt(Point position, int clickCount)
     {
+        if (model.Tool is >= EditorTool.Point and <= EditorTool.Polygon && !model.EnsureActiveLayer()) return;
         var point = ToLocal(position);
         if (model.Tool == EditorTool.Point) { model.Try(() => model.Add(ShapeKind.Point, [point])); return; }
         if (model.Tool is EditorTool.Origin or EditorTool.Move) return;

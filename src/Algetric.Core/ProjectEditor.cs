@@ -4,6 +4,7 @@ namespace Algetric.Core;
 
 public sealed class ProjectEditor
 {
+    public const string MissingLayerMessage = "Crie uma camada pelo botão + antes de criar objetos.";
     private readonly Stack<ProjectDocument> undo = new();
     private readonly Stack<ProjectDocument> redo = new();
     private ProjectDocument saved;
@@ -47,7 +48,7 @@ public sealed class ProjectEditor
     }
     public GeometryObject Add(ShapeKind kind, IEnumerable<LocalPoint> vertices)
     {
-        if (ActiveLayerId is not { } layerId) throw new InvalidOperationException("Crie uma camada pelo botão + antes de criar objetos.");
+        if (ActiveLayerId is not { } layerId) throw new InvalidOperationException(MissingLayerMessage);
         var shape = new GeometryObject(Guid.NewGuid(), $"{Name(kind)} {Document.Objects.Length + 1}",
             layerId, kind, vertices.ToImmutableArray());
         GeometryRules.Validate(shape);

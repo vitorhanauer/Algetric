@@ -20,6 +20,9 @@ internal static class UiTheme
     }
     private static ResourceDictionary Palette(bool dark) => new()
     {
+        ["WarningSurface"] = Brush.Parse(dark ? "#493C1F" : "#FFF4CE"),
+        ["WarningBorder"] = Brush.Parse(dark ? "#AA8738" : "#E2BF67"),
+        ["WarningText"] = Brush.Parse(dark ? "#FFF0BD" : "#624500"),
         ["AppSurface"] = Brush.Parse(dark ? "#20242C" : "#F6F9FC"),
         ["PanelSurface"] = Brush.Parse(dark ? "#272C36" : "#FFFFFF"),
         ["PanelBorder"] = Brush.Parse(dark ? "#414958" : "#DCE5EF"),
