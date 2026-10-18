@@ -26,3 +26,17 @@ test('area selection contains complete objects in either drag direction', async 
   assert.deepEqual(objectsInScreenArea(objects,start,end,p=>p), ['point','line']);
   assert.deepEqual(objectsInScreenArea(objects,end,start,p=>p), ['point','line']);
 });
+
+test('toolbar shortcuts select tools and preserve file and history commands', async () => {
+  const {keyboardCommand} = await import('./bridge.mjs');
+  assert.equal(typeof keyboardCommand, 'function');
+  for(const [key,tool] of [['v',0],['m',6],['p',1],['l',3],['g',4]])
+    assert.deepEqual(keyboardCommand({key}),{type:'tool',tool});
+  assert.deepEqual(keyboardCommand({key:'N',ctrlKey:true,shiftKey:true}),{type:'addLayer'});
+  assert.deepEqual(keyboardCommand({key:'n',ctrlKey:true}),{type:'new'});
+  assert.deepEqual(keyboardCommand({key:'z',ctrlKey:true}),{type:'undo'});
+  assert.deepEqual(keyboardCommand({key:'y',ctrlKey:true}),{type:'redo'});
+  assert.deepEqual(keyboardCommand({key:'Enter'}),{type:'finish'});
+  assert.deepEqual(keyboardCommand({key:'Escape'}),{type:'cancel'});
+  assert.equal(keyboardCommand({key:'l',altKey:true}),null);
+});

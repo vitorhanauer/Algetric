@@ -1,4 +1,4 @@
-import {desiredMode, acceptState, objectsInScreenArea} from './bridge.mjs';
+import {desiredMode, acceptState, objectsInScreenArea, keyboardCommand} from './bridge.mjs';
 const notice=document.querySelector('#notice');
 let viewer,state,sequence=0,pending=false,morphing=false,draft=[],drag=null,area=null,providerId,mode='3D',mapMissing=false,pointerHeld=false;
 const C=globalThis.Cesium;
@@ -158,11 +158,13 @@ function wireEditing(){
   },C.ScreenSpaceEventType.LEFT_UP);
   window.addEventListener('blur',()=>{pointerHeld=false;cancel();});
   window.addEventListener('keydown',event=>{
-    if(event.key==='Escape'){cancel();event.preventDefault();}
-    if(event.key==='Enter'){void finish();event.preventDefault();}
-    const shortcuts={s:'save',o:'open',n:'new',z:'undo',y:'redo'};
-    const type=event.key==='Delete'?'delete':event.ctrlKey?shortcuts[event.key.toLowerCase()]:null;
-    if(type){event.preventDefault();void send(type);}
+    if(event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+    const command=keyboardCommand(event);if(!command)return;
+    event.preventDefault();
+    if(command.type==='cancel'){cancel();return;}
+    if(command.type==='finish'){void finish();return;}
+    if(command.type==='home'){document.querySelector('#home').click();return;}
+    void send(command.type,command.tool===undefined?{}:{tool:command.tool});
   });
 }
 try{

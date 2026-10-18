@@ -33,7 +33,7 @@ public sealed partial class SmokeApplication
     private static async Task VerifyMapWarningsAndShortcutsAsync(MainWindow window, NativeWebView map, EditorViewModel model)
     {
         var original = model.Editor.Document; model.Load(ProjectDocument.Empty()); await Task.Delay(150);
-        model.SetTool(EditorTool.Point);
+        await map.InvokeScript("window.dispatchEvent(new KeyboardEvent('keydown',{key:'p'}))");
         for (var attempt = 0; attempt < 20 && model.Tool != EditorTool.Point; attempt++) await Task.Delay(50);
         CheckLayer(model.Tool == EditorTool.Point, "Map keyboard shortcuts must select the desktop tool.");
         for (var attempt = 0; attempt < 40; attempt++)
@@ -57,13 +57,32 @@ public sealed partial class SmokeApplication
         CheckLayer(popup.IsOpen && model.Editor.Document.Objects.Length == 0, "Creation on the map without layers must show the same popup: " + await map.InvokeScript("JSON.stringify(window.algetric.diagnostics())"));
         CheckLayer((await map.InvokeScript("document.getElementById('finish')===null"))?.Contains("true") == true, "The map must not show a Finish button.");
         popup.IsOpen = false; model.Load(original); model.Editor.Select(original.Objects[0].Id); await Task.Delay(150);
-        Console.WriteLine("MAP WARNING PASS: native popup for missing layers.");
+        Console.WriteLine("MAP WARNING/SHORTCUT PASS: native popup, tool keys and Finish removal.");
     }
     private static async Task VerifyToolShortcutsAsync(MainWindow window, EditorViewModel model)
     {
         var canvas = Field<CartesianCanvas>(window, "canvas");
         var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
         CheckLayer(!buttons.Any(button => Avalonia.Automation.AutomationProperties.GetName(button) == "Concluir"), "The Finish button must be removed.");
-        await Task.CompletedTask;
+        foreach (var (key, tool, label) in new[] { (Key.V, EditorTool.Select, "Selecionar"), (Key.M, EditorTool.Move, "Mover"),
+            (Key.P, EditorTool.Point, "Ponto"), (Key.L, EditorTool.Polyline, "Linha"), (Key.G, EditorTool.Polygon, "Polígono") })
+        {
+            canvas.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key });
+            CheckLayer(model.Tool == tool, $"{key} must activate {label}.");
+            var button = buttons.Single(control => Avalonia.Automation.AutomationProperties.GetName(control) == label);
+            CheckLayer(ToolTip.GetTip(button)?.ToString()?.Contains($"({key})") == true, "Tooltips must show the tool shortcut.");
+        }
+        foreach (var (label, shortcut) in new[] { ("Desfazer", "Ctrl+Z"), ("Refazer", "Ctrl+Y"), ("Criar camada", "Ctrl+Shift+N") })
+        {
+            var button = buttons.Single(control => Avalonia.Automation.AutomationProperties.GetName(control) == label);
+            CheckLayer(ToolTip.GetTip(button)?.ToString()?.Contains(shortcut) == true, "Action tooltips must show their shortcuts.");
+        }
+        var field = LayerControl<TextBox>(window, "PropertyName");
+        field.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.L });
+        CheckLayer(model.Tool == EditorTool.Polygon, "Typing in a property must not change tools.");
+        canvas.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.N, KeyModifiers = KeyModifiers.Control | KeyModifiers.Shift });
+        await Task.Delay(50); LayerDialog("Camada").Close();
+        model.SetTool(EditorTool.Select);
+        Console.WriteLine("SHORTCUT PASS: toolbar keys, tooltips, text input and create layer shortcut.");
     }
 }

@@ -7,7 +7,7 @@ namespace Algetric.Desktop;
 
 public enum EditorTool { Select, Point, Segment, Polyline, Polygon, Origin, Move }
 public sealed record BridgeMessage(string Type, string Session, long Sequence, long Revision,
-    Guid? Id, GeographicPoint[]? Vertices, int Vertex = 0, double Longitude = 0, double Latitude = 0, double Height = 0, Guid[]? Ids = null);
+    Guid? Id, GeographicPoint[]? Vertices, int Vertex = 0, double Longitude = 0, double Latitude = 0, double Height = 0, Guid[]? Ids = null, EditorTool? Tool = null);
 public sealed class EditorViewModel : INotifyPropertyChanged
 {
     public ProjectEditor Editor { get; } = new();
@@ -105,8 +105,13 @@ public sealed class EditorViewModel : INotifyPropertyChanged
     }
     private void Apply(BridgeMessage message)
     {
-        if (message.Type is "save" or "open" or "new") { FileActionRequested?.Invoke(message.Type); return; }
+        if (message.Type is "save" or "open" or "new" or "addLayer") { FileActionRequested?.Invoke(message.Type); return; }
         if (message.Type == "requireLayer") { EnsureActiveLayer(); return; }
+        if (message.Type == "tool" && message.Tool is { } tool)
+        {
+            if (!EditorShortcuts.Tools.Any(shortcut => shortcut.Tool == tool)) throw new ArgumentException("Ferramenta inválida.");
+            SetTool(tool); return;
+        }
         if (message.Type == "delete") { Editor.DeleteSelected(); return; }
         if (message.Type == "undo") { Editor.Undo(); return; }
         if (message.Type == "redo") { Editor.Redo(); return; }

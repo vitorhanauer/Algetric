@@ -51,7 +51,7 @@ public sealed class MainWindow : Window
         map.Source = new Uri(server.BaseUri, "index.html");
         Content = BuildLayout(); DataContext = model;
         model.Changed += Refresh;
-        model.FileActionRequested += command => _ = RunAsync(command switch { "save" => () => SaveAsync(false), "open" => OpenAsync, _ => NewAsync });
+        model.FileActionRequested += command => _ = RunAsync(command switch { "save" => () => SaveAsync(false), "open" => OpenAsync, "addLayer" => () => EditLayerAsync(null), _ => NewAsync });
         model.PropertyChanged += (_, _) => { Title = model.Title; status.Text = model.Status; };
         KeyDown += OnKeyDown;
         AddHandler(KeyDownEvent, OnMoveKeyDown, RoutingStrategies.Tunnel);
@@ -117,7 +117,7 @@ public sealed class MainWindow : Window
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var add = Button("+", () => EditLayerAsync(null)); add.Name = "AddLayer";
-        ToolTip.SetTip(add, "Criar camada"); Avalonia.Automation.AutomationProperties.SetName(add, "Criar camada");
+        ToolTip.SetTip(add, "Criar camada (Ctrl+Shift+N)"); Avalonia.Automation.AutomationProperties.SetName(add, "Criar camada");
         Grid.SetColumn(add, 1); var title = Heading("Camadas"); title.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(title); row.Children.Add(add); return row;
     }
@@ -143,17 +143,20 @@ public sealed class MainWindow : Window
     private Control BuildToolbar()
     {
         var panel = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8) };
-        foreach (var (icon, label, tool) in new[]{("mouse","Selecionar",EditorTool.Select),("✥","Mover",EditorTool.Move),("•","Ponto",EditorTool.Point),
-            ("╱","Linha",EditorTool.Polyline),("⬡","Polígono",EditorTool.Polygon)})
+        foreach (var shortcut in EditorShortcuts.Tools)
         {
-            var button = ToolbarButton(icon, label, () => { canvas.CancelDraft(); model.SetTool(tool); return Task.CompletedTask; });
-            if (tool == EditorTool.Move) ToolTip.SetTip(button, "Mover o plano • segure Espaço para ativar temporariamente");
-            tools.Add((button, tool)); panel.Children.Add(button);
+            var button = ToolbarButton(shortcut.Icon, shortcut.Label,
+                () => { SelectTool(shortcut.Tool); return Task.CompletedTask; });
+            var hint = $"{shortcut.Label} ({shortcut.Key})";
+            if (shortcut.Tool == EditorTool.Move) hint += " • segure Espaço para mover temporariamente";
+            if (shortcut.Tool is EditorTool.Polyline or EditorTool.Polygon) hint += " • Enter ou duplo clique para concluir";
+            ToolTip.SetTip(button, hint);
+            tools.Add((button, shortcut.Tool)); panel.Children.Add(button);
         }
-        panel.Children.Add(ToolbarButton("↶", "Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }));
-        panel.Children.Add(ToolbarButton("↷", "Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; })); return panel;
+        panel.Children.Add(ToolbarButton("↶", "Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }, "Ctrl+Z"));
+        panel.Children.Add(ToolbarButton("↷", "Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; }, "Ctrl+Y")); return panel;
     }
-    private Button ToolbarButton(string icon, string label, Func<Task> action)
+    private Button ToolbarButton(string icon, string label, Func<Task> action, string? shortcut = null)
     {
         var button = Button(icon, action);
         button.Width = 40; button.Height = 40;
@@ -163,7 +166,7 @@ public sealed class MainWindow : Window
         button.VerticalContentAlignment = VerticalAlignment.Center;
         button.Background = Brushes.Transparent;
         if (icon == "mouse") button.Content = MousePointerIcon(button);
-        ToolTip.SetTip(button, label);
+        ToolTip.SetTip(button, shortcut is null ? label : $"{label} ({shortcut})");
         Avalonia.Automation.AutomationProperties.SetName(button, label);
         return button;
     }
@@ -265,7 +268,10 @@ public sealed class MainWindow : Window
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape && layers.CancelDrag()) { e.Handled = true; return; }
+        if (HandleToolShortcut(e)) return;
         var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        if (control && e.Key == Key.N && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        { _ = RunAsync(() => EditLayerAsync(null)); e.Handled = true; return; }
         if (control && e.Key == Key.S) { _ = RunAsync(() => SaveAsync(false)); e.Handled = true; }
         else if (control && e.Key == Key.O) { _ = RunAsync(OpenAsync); e.Handled = true; }
         else if (control && e.Key == Key.N) { _ = RunAsync(NewAsync); e.Handled = true; }
@@ -274,6 +280,18 @@ public sealed class MainWindow : Window
         else if (e.Source is not TextBox && e.Key == Key.Delete) { model.Editor.DeleteSelected(); e.Handled = true; }
         else if (e.Key == Key.Escape) { canvas.CancelDraft(); model.SetTool(EditorTool.Select); _ = map.InvokeScript("window.algetric?.cancel()"); e.Handled = true; }
         else if (e.Source is not TextBox && e.Key == Key.Enter) { canvas.FinishDraft(); _ = map.InvokeScript("window.algetric?.finish()"); e.Handled = true; }
+    }
+    private void SelectTool(EditorTool tool)
+    {
+        canvas.CancelDraft(); model.SetTool(tool);
+    }
+    private bool HandleToolShortcut(KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.None || e.Source is TextBox or ComboBox || e.Source is Visual visual &&
+            visual.GetVisualAncestors().Any(parent => parent is TextBox or ComboBox or Menu)) return false;
+        var shortcut = EditorShortcuts.Tools.FirstOrDefault(shortcut => shortcut.Key == e.Key);
+        if (shortcut is null) return false;
+        SelectTool(shortcut.Tool); e.Handled = true; return true;
     }
     private Task EditLayerAsync(Layer? layer) => Dialogs.EditLayer(this, model, layer);
     private Task EditOriginAsync() => Dialogs.EditOrigin(this, model);

@@ -17,3 +17,16 @@ export function objectsInScreenArea(objects, start, end, project) {
     return point && point.x>=left && point.x<=right && point.y>=top && point.y<=bottom;
   })).map(object=>object.id);
 }
+export function keyboardCommand({key,ctrlKey=false,shiftKey=false,altKey=false,metaKey=false}) {
+  if(altKey||metaKey)return null;
+  if(ctrlKey){
+    if(key.toLowerCase()==='n' && shiftKey)return {type:'addLayer'};
+    const type={s:'save',o:'open',n:'new',z:'undo',y:'redo'}[key.toLowerCase()];
+    return type?{type}:null;
+  }
+  const type={Escape:'cancel',Enter:'finish',Delete:'delete',Home:'home'}[key];
+  if(type)return {type};
+  if(shiftKey)return null;
+  const tool={v:0,m:6,p:1,l:3,g:4}[key.toLowerCase()];
+  return tool===undefined?null:{type:'tool',tool};
+}
