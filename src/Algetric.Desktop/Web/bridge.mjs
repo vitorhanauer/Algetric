@@ -24,7 +24,7 @@ export function keyboardCommand({key,ctrlKey=false,shiftKey=false,altKey=false,m
     const type={s:'save',o:'open',n:'new',z:'undo',y:'redo'}[key.toLowerCase()];
     return type?{type}:null;
   }
-  const type={Escape:'cancel',Enter:'finish',Delete:'delete',Home:'home'}[key];
+  const type={Escape:'cancel',Enter:'finish',Delete:'delete',Home:'home',f:'function',F:'function'}[key];
   if(type)return {type};
   if(shiftKey)return null;
   const tool={v:0,m:6,p:1,l:3,g:4}[key.toLowerCase()];

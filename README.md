@@ -158,6 +158,25 @@ The appearance follows the operating system theme by default. Use **Appearance**
 | --- | --- |
 | ![Cartesian plane and properties panel in the light theme](docs/images/light-theme.png) | ![Cartesian plane and properties panel in the dark theme](docs/images/cartesian-editor.png) |
 
+## Function graphs
+
+Create a layer, then click **f(x)** in the toolbar or press **F**. Enter an expression and an X interval (default: −10 to 10); an optional name identifies the graph in the layer list. The plane zooms to the graph after applying it. Select the graph and use **Properties → Edit function** to change its formula or interval. Graphs support layer colors, individual visibility, deletion, saving/reopening, and undo/redo. Their separate curve segments are also displayed on the map.
+
+| Function family | Examples |
+| --- | --- |
+| Constant | `5`, `pi`, `e` |
+| Polynomial | `2*x^3 - 3*x + 1` |
+| Exponential | `2^x`, `e^x`, `exp(x)` |
+| Logarithmic | `ln(x)`, `log(x)`, `log(x, 2)` |
+| Trigonometric | `sin(x)`, `cos(x)`, `tan(x)` |
+| Combined | `sin(x) + x^2`, `exp(-x^2)*cos(3*x)`, `ln(x^2 + 1)` |
+
+Use `+`, `-`, `*`, `/`, `^`, and parentheses to compose expressions. Multiplication can also be implicit, as in `2x`, `2(x+1)`, or `(x+1)(x-1)`. Powers associate to the right: `2^3^2` means `2^(3^2)`, and `-x^2` means `-(x^2)`. Optional `f(x) =` and `y =` prefixes are accepted. Use a decimal point inside expressions.
+
+Trigonometric functions use radians. `sen` and `tg` are aliases for `sin` and `tan`; inverse functions `asin`, `acos`, and `atan`, plus `sqrt` and `abs`, are available. `ln` is the natural logarithm; `log` and `log10` use base 10; `log2` uses base 2; `log(x, b)` selects a base. Constants include `pi`, `π`, and `e`. Names are case-insensitive.
+
+Graphs use a finite X interval within ±50 km and the project's local coordinate limits. Curves are numerical approximations: undefined values and unresolved discontinuities leave gaps, including around vertical asymptotes. An expression without any drawable portion in the requested interval is rejected without changing the project.
+
 ## Coverage paths
 
 Right-click a polygon on the plane, map, or its object row and choose **Generate point path**. You can also open the dialog from **Edit**. The context polygon is selected automatically; choose another polygon if needed, select existing start/end points, choose vertices of the selected polygon, or enter coordinates, and set the coverage width in meters and overlap percentage (0% to less than 100%). Endpoints may be inside or outside the polygon, within the project’s 50 km coordinate limit. External endpoints are joined to the nearest polygon boundary by straight entry/exit segments; the coverage route itself remains inside the polygon.

@@ -38,5 +38,7 @@ test('toolbar shortcuts select tools and preserve file and history commands', as
   assert.deepEqual(keyboardCommand({key:'y',ctrlKey:true}),{type:'redo'});
   assert.deepEqual(keyboardCommand({key:'Enter'}),{type:'finish'});
   assert.deepEqual(keyboardCommand({key:'Escape'}),{type:'cancel'});
+  assert.deepEqual(keyboardCommand({key:'f'}),{type:'function'});
+  assert.deepEqual(keyboardCommand({key:'F'}),{type:'function'});
   assert.equal(keyboardCommand({key:'l',altKey:true}),null);
 });

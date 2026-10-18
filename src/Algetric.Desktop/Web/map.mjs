@@ -62,8 +62,10 @@ function render(){
     if(object.kind===0)viewer.entities.add({id:object.id,position:vertices[0],point:{pixelSize:selected?14:10,color,outlineColor:selected?C.Color.ROYALBLUE:C.Color.WHITE,outlineWidth:2}});
     else if(object.kind===3)viewer.entities.add({id:object.id,polygon:{hierarchy:vertices,material:color.withAlpha(.22)},
       polyline:{positions:[...vertices,vertices[0]],width:selected?4:2,material:color}});
+    else if(object.kind===5)(object.paths??[]).forEach((path,index)=>viewer.entities.add({id:`function:${object.id}:${index}`,
+      polyline:{positions:geos(path),width:selected?4:2,material:color}}));
     else viewer.entities.add({id:object.id,polyline:{positions:vertices,width:selected?4:2,material:color}});
-    if(selected && object.kind!==0)vertices.forEach((position,index)=>viewer.entities.add({id:`vertex:${object.id}:${index}`,position,
+    if(selected && object.kind!==0 && object.kind!==5)vertices.forEach((position,index)=>viewer.entities.add({id:`vertex:${object.id}:${index}`,position,
       point:{pixelSize:10,color,outlineColor:C.Color.WHITE,outlineWidth:2}}));
   }
   if(draft.length){
@@ -164,7 +166,9 @@ function wireEditing(){
     const picked=viewer.scene.pick(event.position)?.id?.id;
     let id=typeof picked==='string'?picked:null,vertex=-1;
     if(id?.startsWith('vertex:')){const parts=id.split(':');id=parts[1];vertex=Number(parts[2]);}
+    if(id?.startsWith('function:'))id=id.split(':')[1];
     const object=state.objects.find(o=>o.id===id);if(!object){beginAreaSelection(event.position);return;}
+    if(object.kind===5){await send('select',{id:object.id});return;}
     const start=positionAt(event.position);if(!start)return;
     pointerHeld=true;viewer.scene.screenSpaceCameraController.enableInputs=false;
     await send('select',{id:object.id,vertex:Math.max(0,vertex)});
@@ -205,7 +209,7 @@ try{
   viewer.scene.globe.baseColor=C.Color.fromCssColorString('#DDE7EC');
   viewer.scene.backgroundColor=C.Color.fromCssColorString('#EEF3F8');
   viewer.scene.globe.enableLighting=false;
-  globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,pending,tool:state?.tool,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,selectedIds:state?.selectedIds,areaSelecting:!!area,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
+  globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,pending,tool:state?.tool,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,functionSegments:viewer.entities.values.filter(entity=>String(entity.id).startsWith('function:')).length,selectedIds:state?.selectedIds,areaSelecting:!!area,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
   wireEditing();sync(initialState);
   viewer.camera.changed.addEventListener(transition);viewer.camera.percentageChanged=.05;
   viewer.camera.moveEnd.addEventListener(()=>{if(!morphing&&state)void send('camera',centerAndHeight());});
