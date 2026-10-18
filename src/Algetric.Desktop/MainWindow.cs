@@ -32,6 +32,7 @@ public sealed class MainWindow : Window
     private readonly List<(Button Button, EditorTool Tool)> tools = [];
     public MainWindow(string? storageDirectory = null)
     {
+        UiTheme.Initialize(Application.Current!);
         Width = 1380; Height = 880; MinWidth = 940; MinHeight = 620;
         dataDirectory = storageDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "algetric");
         Directory.CreateDirectory(dataDirectory);
@@ -60,7 +61,8 @@ public sealed class MainWindow : Window
     }
     private Control BuildLayout()
     {
-        var root = new DockPanel { Background = Brush.Parse("#F6F9FC") };
+        var root = new DockPanel();
+        UiTheme.Bind(root, BackgroundProperty, "AppSurface");
         var header = new StackPanel(); DockPanel.SetDock(header, Dock.Top);
         header.Children.Add(BuildMenu()); header.Children.Add(BuildToolbar()); root.Children.Add(header);
         DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
@@ -87,12 +89,25 @@ public sealed class MainWindow : Window
             Name = "PropertiesSection", BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new ScrollViewer { Content = propertyContent }
         };
-        propertySection.BorderBrush = Brush.Parse("#DCE5EF");
+        UiTheme.Bind(propertySection, Border.BorderBrushProperty, "PanelBorder");
         Grid.SetRow(propertySection, 1); sidebar.Children.Add(propertySection);
         var border = new Border { Name = "SidebarBorder", Width = 285, BorderThickness = new Thickness(0, 0, 1, 0), Child = sidebar };
-        border.Background = Brushes.White;
-        border.BorderBrush = Brush.Parse("#DCE5EF");
+        UiTheme.Bind(border, Border.BackgroundProperty, "PanelSurface");
+        UiTheme.Bind(border, Border.BorderBrushProperty, "PanelBorder");
         return border;
+    }
+    private MenuItem BuildAppearanceMenu()
+    {
+        var appearance = new MenuItem { Header = "Aparência" };
+        var light = Item("Tema claro", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Light)); light.Name = "LightTheme";
+        var dark = Item("Tema escuro", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Dark)); dark.Name = "DarkTheme";
+        appearance.Items.Add(light); appearance.Items.Add(dark);
+        return appearance;
+    }
+    private Task SetThemeAsync(Avalonia.Styling.ThemeVariant theme)
+    {
+        Application.Current!.RequestedThemeVariant = theme;
+        return Task.CompletedTask;
     }
     private Control BuildLayersHeading()
     {
@@ -119,7 +134,7 @@ public sealed class MainWindow : Window
         {
             await Dialogs.Message(this, "Como editar", "Escolha uma ferramenta e clique para criar.\nLinhas e polígonos: duplo clique ou Enter para concluir; Esc cancela.\nSelecionar: arraste um vértice ou o objeto.\nPlano: Mover + arraste navega; segure Espaço para mover temporariamente.\nSolte Espaço para voltar à ferramenta anterior. Botão direito/central também move; roda ajusta o zoom.\nMapa: arraste para navegar; use o zoom para alternar globo e 2D.\nMedidas planimétricas • limite de 50 km da origem.");
         }));
-        menu.Items.Add(file); menu.Items.Add(edit); menu.Items.Add(maps); menu.Items.Add(help); return menu;
+        menu.Items.Add(file); menu.Items.Add(edit); menu.Items.Add(maps); menu.Items.Add(BuildAppearanceMenu()); menu.Items.Add(help); return menu;
     }
     private Control BuildToolbar()
     {
@@ -151,7 +166,7 @@ public sealed class MainWindow : Window
     private void Refresh()
     {
         Title = model.Title; status.Text = model.Status;
-        foreach (var (button, tool) in tools) button.Background = model.Tool == tool ? Brush.Parse("#D7F1FB") : Brushes.Transparent;
+        foreach (var (button, tool) in tools) UiTheme.SetHighlight(button, Avalonia.Controls.Button.BackgroundProperty, model.Tool == tool, "ActiveTool");
         layers.Refresh(); properties.Refresh(); _ = SyncMapAsync();
     }
     private async Task SyncMapAsync()
@@ -251,7 +266,12 @@ public sealed class MainWindow : Window
         if (model.Provider is null) { await Dialogs.Message(this, "Mapas offline", "Configure um provedor no menu Mapa antes de baixar regiões."); return; }
         await new OfflineWindow(model.Provider, model.Editor.Document.Origin, tiles, client, dataDirectory).ShowDialog(this);
     }
-    private static TextBlock Heading(string text) => new() { Text = text, FontWeight = FontWeight.Bold, Foreground = Brush.Parse("#101B4F") };
+    private static TextBlock Heading(string text)
+    {
+        var heading = new TextBlock { Text = text, FontWeight = FontWeight.Bold };
+        UiTheme.Bind(heading, TextBlock.ForegroundProperty, "HeadingText");
+        return heading;
+    }
     private Button Button(string label, Func<Task> action)
     {
         var button = new Button { Content = label, Margin = new Thickness(2), Padding = new Thickness(9, 6) };

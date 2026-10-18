@@ -23,6 +23,7 @@ public sealed class CartesianCanvas : Control
     {
         this.model = model; Focusable = true; ClipToBounds = true; Cursor = new(StandardCursorType.Cross);
         model.Changed += RefreshTool;
+        ActualThemeVariantChanged += (_, _) => InvalidateVisual();
     }
     private void RefreshTool()
     {
@@ -39,7 +40,7 @@ public sealed class CartesianCanvas : Control
         (Bounds.Height / 2 - point.Y) / View.PixelsPerMeter + View.CenterY);
     public override void Render(DrawingContext context)
     {
-        context.FillRectangle(Brushes.White, new Rect(Bounds.Size)); DrawGrid(context);
+        context.FillRectangle(UiTheme.BrushFor(this, "CanvasSurface"), new Rect(Bounds.Size)); DrawGrid(context);
         foreach (var shape in model.Editor.Document.Objects)
         {
             var layer = model.Editor.Document.Layers.First(l => l.Id == shape.LayerId);
@@ -54,7 +55,7 @@ public sealed class CartesianCanvas : Control
         var target = 70 / View.PixelsPerMeter; var power = Math.Pow(10, Math.Floor(Math.Log10(target)));
         var step = new[] { 1d, 2d, 5d, 10d }.Select(n => n * power).First(n => n >= target);
         var minimum = ToLocal(new(0, Bounds.Height)); var maximum = ToLocal(new(Bounds.Width, 0));
-        var grid = new Pen(Brush.Parse("#E9EEF4"), 1); var axis = new Pen(Brush.Parse("#46536A"), 1.5);
+        var grid = new Pen(UiTheme.BrushFor(this, "CanvasGrid"), 1); var axis = new Pen(UiTheme.BrushFor(this, "CanvasAxis"), 1.5);
         for (var x = Math.Ceiling(minimum.X / step) * step; x <= maximum.X; x += step)
         {
             var screen = ToScreen(new(x, 0)).X; context.DrawLine(grid, new(screen, 0), new(screen, Bounds.Height));
@@ -69,8 +70,8 @@ public sealed class CartesianCanvas : Control
         context.DrawLine(axis, new(0, origin.Y), new(Bounds.Width, origin.Y));
         Label(context, "X (m)", new(Bounds.Width - 55, Bounds.Height - 42)); Label(context, "Y (m)", new(8, 8));
     }
-    private static void Label(DrawingContext context, string text, Point position) => context.DrawText(
-        new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Inter"), 12, Brush.Parse("#46536A")), position);
+    private void Label(DrawingContext context, string text, Point position) => context.DrawText(
+        new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Inter"), 12, UiTheme.BrushFor(this, "CanvasAxis")), position);
     private void DrawShape(DrawingContext context, LocalPoint[] vertices, ShapeKind kind, Color color, bool selected)
     {
         if (vertices.Length == 0) return;

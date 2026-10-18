@@ -55,7 +55,10 @@ internal sealed partial class LayerPanel
         Focus(); dragPointer = pointer; pointer.Capture(this);
         // Hide only the list row; the project changes once, after a valid drop.
         objectRows[id].Row.IsVisible = false;
-        dragPreview.Child = new TextBlock { Text = shape.Name, Foreground = Brush.Parse("#15365D"), MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis };
+        var label = new TextBlock { Text = shape.Name, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis };
+        UiTheme.Bind(label, TextBlock.ForegroundProperty, "DragText");
+        UiTheme.Bind(dragPreview, Border.BackgroundProperty, "DragSurface");
+        dragPreview.Child = label;
         dragPreview.IsVisible = true; UpdateEmptyLayers();
     }
     private Guid? FindDropLayer(Point position)
@@ -95,7 +98,7 @@ internal sealed partial class LayerPanel
         {
             var validTarget = draggedObject is not null && dropLayer == id && sourceLayer != id;
             row.Card.BorderBrush = validTarget ? Brush.Parse("#5497DC") : Brushes.Transparent;
-            row.Card.Background = validTarget ? Brush.Parse("#F0F7FF") : Brushes.Transparent;
+            UiTheme.SetHighlight(row.Card, Border.BackgroundProperty, validTarget, "DropSurface");
         }
     }
 }

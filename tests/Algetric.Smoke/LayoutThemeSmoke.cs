@@ -28,4 +28,32 @@ public sealed partial class SmokeApplication
         await Task.Delay(100);
         Console.WriteLine("SIDEBAR PASS: fixed bottom properties, independent layer scrolling, resize and no selection.");
     }
+    private static async Task VerifyThemesAsync(MainWindow window, EditorViewModel model)
+    {
+        var sidebar = LayerControl<Border>(window, "SidebarBorder");
+        var light = ((ISolidColorBrush)sidebar.Background!).Color;
+        ThemeItem(window, "DarkTheme").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        await Task.Delay(100);
+        CheckLayer(window.ActualThemeVariant == ThemeVariant.Dark && ((ISolidColorBrush)sidebar.Background!).Color != light,
+            "Dark theme must update both controls and sidebar surfaces.");
+        var dialog = await OpenLayerEditorAsync(window, model.Editor.Document.Layers[0].Id);
+        CheckLayer(dialog.ActualThemeVariant == ThemeVariant.Dark, "Dialogs must use the active application theme.");
+        dialog.Close();
+        SaveThemeScreenshot(window, "dark");
+        ThemeItem(window, "LightTheme").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        await Task.Delay(100);
+        CheckLayer(window.ActualThemeVariant == ThemeVariant.Light && ((ISolidColorBrush)sidebar.Background!).Color == light,
+            "Light theme must restore the original surfaces.");
+        SaveThemeScreenshot(window, "light");
+        Console.WriteLine("THEME PASS: dark/light switching, surfaces and dialogs.");
+    }
+    private static MenuItem ThemeItem(MainWindow window, string name)
+        => window.GetVisualDescendants().OfType<Menu>().Single().Items.OfType<MenuItem>()
+            .SelectMany(item => item.Items.OfType<MenuItem>()).Single(item => item.Name == name);
+    private static void SaveThemeScreenshot(MainWindow window, string theme)
+    {
+        Directory.CreateDirectory("artifacts/smoke");
+        using var bitmap = new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width, (int)window.Bounds.Height));
+        bitmap.Render(window); bitmap.Save($"artifacts/smoke/theme-{theme}.png", PngBitmapEncoderOptions.Default);
+    }
 }

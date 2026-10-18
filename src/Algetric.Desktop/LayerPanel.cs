@@ -41,7 +41,7 @@ internal sealed partial class LayerPanel : StackPanel
             {
                 var row = layerRows[layer.Id]; row.Name.Text = layer.Name; row.Name.Foreground = Brush.Parse(layer.Color);
                 row.Visible.IsChecked = layer.Visible;
-                row.Select.Background = layer.Id == model.Editor.ActiveLayerId ? Brush.Parse("#E8F2FD") : Brushes.Transparent;
+                UiTheme.SetHighlight(row.Select, Button.BackgroundProperty, layer.Id == model.Editor.ActiveLayerId, "ActiveLayer");
                 RefreshObjectRows(layer, row.Objects);
             }
             UpdateEmptyLayers(); UpdateDropHighlight();
@@ -75,7 +75,7 @@ internal sealed partial class LayerPanel : StackPanel
                 (row.Row.Parent as Panel)?.Children.Remove(row.Row); container.Children.Insert(index, row.Row);
             }
             row.Name.Text = shape.Name;
-            row.Select.Background = shape.Id == model.Editor.SelectedId ? Brush.Parse("#D7EAFF") : Brushes.Transparent;
+            UiTheme.SetHighlight(row.Select, Button.BackgroundProperty, shape.Id == model.Editor.SelectedId, "SelectedObject");
             Avalonia.Automation.AutomationProperties.SetName(row.Delete, $"Excluir {shape.Name}");
             ToolTip.SetTip(row.Delete, $"Excluir {shape.Name}"); index++;
         }
@@ -126,6 +126,7 @@ internal sealed partial class LayerPanel : StackPanel
             Width = 16,
             Height = 18
         }, () => model.Editor.Delete(id));
+        UiTheme.Bind((Avalonia.Controls.Shapes.Path)delete.Content!, Avalonia.Controls.Shapes.Shape.StrokeProperty, "DangerText");
         delete.Name = $"DeleteObject_{id:N}";
         var row = new Grid { Name = $"Object_{id:N}", ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(delete, 1); row.Children.Add(select); row.Children.Add(delete);
