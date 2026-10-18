@@ -35,9 +35,13 @@ public sealed partial class SmokeApplication
         model.Editor.Add(ShapeKind.Polygon, [new(200, 200), new(250, 200), new(250, 250), new(200, 250)]);
         var before = model.Editor.Document;
         var dialog = await OpenCoverageDialogAsync(window, polygon);
+        VerifyVertexChoices(dialog, polygon);
         var polygonChoice = dialog.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CoveragePolygon");
         polygonChoice.SelectedIndex = 1;
         CheckLayer(dialog.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "CoverageStartX").Text == "200", "Changing polygons must update the default endpoints.");
+        CheckLayer(dialog.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CoverageStartPoint").Items.Cast<object>()
+            .Where(choice => choice.ToString()!.StartsWith("Vértice ")).All(choice => choice.ToString()!.Contains("Polígono 4")),
+            "Changing polygons must replace the vertex options with the new polygon vertices.");
         dialog.Close();
         CheckLayer(ReferenceEquals(before, model.Editor.Document), "Cancelling the path modal must preserve the document.");
         dialog = await OpenCoverageDialogAsync(window, polygon);
@@ -61,8 +65,37 @@ public sealed partial class SmokeApplication
         CheckLayer(LayerControl<Button>(window, $"ObjectSelect_{path.Id:N}").IsEffectivelyVisible, "The generated path must appear in the layer list.");
         SaveCoverageScreenshot(window, "coverage-result");
         model.Editor.Undo(); CheckLayer(model.Editor.Document.Objects.SequenceEqual(before.Objects), "Path generation must undo in one operation.");
+        await VerifyExternalPointAndVertexAsync(window, model, polygon);
         model.Load(original); model.Editor.Select(polygon.Id);
         Console.WriteLine("COVERAGE PATH PASS: polygon menu, preselection, point choices, validation, real native route, cancel and undo.");
+    }
+    private static void VerifyVertexChoices(Window dialog, GeometryObject polygon)
+    {
+        var start = dialog.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CoverageStartPoint");
+        var end = dialog.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CoverageEndPoint");
+        var choices = start.Items.Cast<object>().ToArray();
+        CheckLayer(choices.Count(choice => choice.ToString()!.StartsWith("Vértice ")) == polygon.Vertices.Length,
+            "Both endpoint selectors must offer every vertex of the selected polygon.");
+        start.SelectedItem = choices.Single(choice => choice.ToString()!.StartsWith("Vértice 2 —"));
+        end.SelectedItem = end.Items.Cast<object>().Single(choice => choice.ToString()!.StartsWith($"Vértice {polygon.Vertices.Length} —"));
+        CheckLayer(dialog.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "CoverageStartX").Text == FormatCoordinate(polygon.Vertices[1].X),
+            "Selecting a polygon vertex must fill the endpoint coordinates.");
+    }
+    private static string FormatCoordinate(double value) => value.ToString("G12", System.Globalization.CultureInfo.InvariantCulture);
+    private static async Task VerifyExternalPointAndVertexAsync(MainWindow window, EditorViewModel model, GeometryObject polygon)
+    {
+        var outside = model.Editor.Add(ShapeKind.Point, [new(-20, 50)]); var before = model.Editor.Document;
+        var dialog = await OpenCoverageDialogAsync(window, polygon);
+        var start = dialog.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CoverageStartPoint");
+        start.SelectedItem = start.Items.Cast<object>().Single(choice => choice.ToString()!.StartsWith(outside.Name + " ("));
+        var end = dialog.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "CoverageEndPoint");
+        end.SelectedItem = end.Items.Cast<object>().Single(choice => choice.ToString()!.StartsWith("Vértice 3 —"));
+        dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Gerar caminho")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        for (var attempt = 0; attempt < 60 && dialog.IsVisible; attempt++) await Task.Delay(50);
+        CheckLayer(!dialog.IsVisible && model.Editor.Document.Objects.Length == before.Objects.Length + 1, "An external point and a polygon vertex must generate a path.");
+        var path = model.Editor.Document.Objects.Last();
+        CheckLayer(path.Vertices[0] == outside.Vertices[0] && path.Vertices[^1] == polygon.Vertices[2], "Generation must preserve the requested external endpoint and vertex.");
+        model.Editor.Undo();
     }
     private static void SaveCoverageScreenshot(Window window, string name)
     {

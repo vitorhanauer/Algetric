@@ -30,7 +30,7 @@ internal static partial class Dialogs
         var start = new CoveragePointInput("Ponto inicial", "Start", points); var end = new CoveragePointInput("Ponto final", "End", points);
         inputs.Children.Add(start); inputs.Children.Add(end);
         var (width, overlap) = CoverageParameters(inputs);
-        selector.SelectionChanged += (_, _) => { if (selector.SelectedItem is PolygonChoice choice) { start.SetDefault(choice.Shape.Vertices[0]); end.SetDefault(choice.Shape.Vertices[^1]); } };
+        selector.SelectionChanged += (_, _) => { if (selector.SelectedItem is PolygonChoice choice) { start.SetPolygon(choice.Shape, 0); end.SetPolygon(choice.Shape, choice.Shape.Vertices.Length - 1); } };
         selector.SelectedItem = choices.FirstOrDefault(choice => choice.Id == polygonId) ?? choices[0];
         panel.Children.Add(inputs);
         var window = Window("Gerar caminho de pontos", panel, 500);

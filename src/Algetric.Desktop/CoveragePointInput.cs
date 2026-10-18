@@ -9,6 +9,7 @@ internal sealed class CoveragePointInput : StackPanel
 {
     private sealed record PointChoice(string Label, LocalPoint? Point)
     { public override string ToString() => Label; }
+    private readonly PointChoice[] coordinateAndObjectChoices;
     private readonly ComboBox selector;
     private readonly TextBox x;
     private readonly TextBox y;
@@ -18,7 +19,8 @@ internal sealed class CoveragePointInput : StackPanel
         Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.SemiBold });
         var choices = new List<PointChoice> { new("Informar coordenadas", null) };
         choices.AddRange(points.Select(point => new PointChoice($"{point.Name} ({Dialogs.Number(point.Vertices[0].X)}; {Dialogs.Number(point.Vertices[0].Y)})", point.Vertices[0])));
-        selector = new ComboBox { Name = $"Coverage{prefix}Point", ItemsSource = choices, HorizontalAlignment = HorizontalAlignment.Stretch };
+        coordinateAndObjectChoices = choices.ToArray();
+        selector = new ComboBox { Name = $"Coverage{prefix}Point", ItemsSource = coordinateAndObjectChoices, HorizontalAlignment = HorizontalAlignment.Stretch };
         Children.Add(selector);
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 8 };
         var first = new StackPanel { Spacing = 4 }; var second = new StackPanel { Spacing = 4 };
@@ -28,10 +30,12 @@ internal sealed class CoveragePointInput : StackPanel
         selector.SelectionChanged += (_, _) => UpdateSelection(); selector.SelectedIndex = 0;
     }
     public LocalPoint Value => new(Dialogs.Parse(x), Dialogs.Parse(y));
-    public void SetDefault(LocalPoint point)
+    public void SetPolygon(GeometryObject polygon, int defaultVertex)
     {
-        selector.SelectedIndex = 0;
-        x.Text = Dialogs.Number(point.X); y.Text = Dialogs.Number(point.Y);
+        var vertices = polygon.Vertices.Select((point, index) => new PointChoice(
+            $"Vértice {index + 1} — {polygon.Name} ({Dialogs.Number(point.X)}; {Dialogs.Number(point.Y)})", point));
+        selector.ItemsSource = coordinateAndObjectChoices.Concat(vertices).ToArray();
+        selector.SelectedIndex = coordinateAndObjectChoices.Length + defaultVertex;
     }
     private void UpdateSelection()
     {
