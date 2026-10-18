@@ -15,4 +15,4 @@ The application uses the components listed below. Lockfiles also record transiti
 | PROJ | MIT, https://proj.org/ |
 | WebKitGTK / WPE WebKit | LGPL/BSD and component-specific licenses, https://webkitgtk.org/ |
 
-Cesium and its assets are copied with the notices distributed in the npm package. Renderer credits and provider attribution remain visible on the map. WebKitGTK, PROJ, and its data are system dependencies and are not embedded in the application code. Map data has its own license, as specified by the provider configured by the user.
+Cesium and its assets are copied with the notices distributed in the npm package. Renderer credits and provider attribution remain visible on the map. WebKitGTK and PROJ are system dependencies on Linux. Windows packages include PROJ, its database, and native dependencies built with vcpkg; their copyright notices are included under `native-licenses`. The Microsoft Edge WebView2 Runtime is installed separately under Microsoft's license. Map data has its own license, as specified by the provider configured by the user.

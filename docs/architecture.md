@@ -1,7 +1,7 @@
 # Architecture
 
 - **Core:** immutable documents, layers, NTS geometries, editing commands, history snapshots, and contracts for persistence, coordinate transformations, and maps. It does not depend on Avalonia, storage, or JavaScript.
-- **Infrastructure:** native PROJ adapter, versioned JSON with atomic writes, SQLite tile and region storage, bounded downloads, settings, Secret Service integration, and a loopback HTTP server.
+- **Infrastructure:** native PROJ adapter, versioned JSON with atomic writes, SQLite tile and region storage, bounded downloads, settings, Linux Secret Service or Windows DPAPI integration, and a Kestrel loopback HTTP server.
 - **Desktop:** shared ViewModel, Avalonia controls, Cartesian canvas, dialogs, and Cesium in a NativeWebView. Both views modify the document through the same editor.
 
 ## Editing flow
@@ -10,7 +10,7 @@ Canvas events are converted from pixels to meters. The map emits WGS84 positions
 
 The document is the source of truth. C# projects visible objects into WGS84 and sends their state to Cesium. Messages include a session, sequence number, and revision. Replayed messages, messages from an old session, and messages with a stale revision do not modify the document. Switching projects renews the session. Selection does not create a history entry.
 
-The bridge uses typed JSON over loopback HTTP and updates through `NativeWebView.InvokeScript`. The server listens only on 127.0.0.1, requires a random path for each execution, and rejects foreign origins. The temporary URL and static assets contain no credentials. Browser tile URLs point to the loopback server; provider authentication happens in C#.
+The bridge uses typed JSON over loopback HTTP and updates through `NativeWebView.InvokeScript`. Kestrel binds a user-owned socket on both platforms, avoiding Windows HTTP.sys URL ACL requirements. The server listens only on 127.0.0.1, requires a random path for each execution, and rejects foreign origins. The temporary URL and static assets contain no credentials. Browser tile URLs point to the loopback server; provider authentication happens in C#.
 
 ## Persistence
 
@@ -23,3 +23,9 @@ The cache uses (provider, zoom, x, y) keys, region records, and associations bet
 ## Evolution
 
 There are no migrations from earlier documents because this is the first version. Future versions must introduce explicit migrations before changing the format. GIS formats, alternative renderers, and algorithms can build on the existing contracts without introducing UI dependencies into the domain.
+
+## Windows distribution
+
+The native adapter resolves Linux's `libproj.so.25` or a bundled Windows PROJ DLL. Windows contexts explicitly load `proj-data/proj.db` from the application directory. The vcpkg manifest pins the native dependency baseline; release DLLs, database, and copyright notices are packaged with the self-contained application. `AlgetricProjRoot` supplies these assets to desktop, test, and smoke builds.
+
+The Windows installer uses per-user application storage, Start menu shortcuts, and an HKCU uninstall registration. Its ownership marker prevents replacing or deleting unrelated installation directories. User data lives outside the installation directory. DPAPI encrypts provider tokens for the current Windows user. WebView2 detection follows Microsoft's Evergreen registry locations.

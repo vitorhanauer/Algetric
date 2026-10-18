@@ -39,3 +39,49 @@ jobs:
             artifacts/algetric-linux-x64.tar.gz
             artifacts/algetric-linux-x64.tar.gz.sha256
             artifacts/smoke/
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: src/Algetric.Desktop/Web/package-lock.json
+      - name: Test Windows package scripts
+        shell: pwsh
+        run: ./tests/windows/Packaging.Tests.ps1
+      - name: Build pinned PROJ dependencies
+        shell: pwsh
+        run: |
+          ./scripts/prepare-windows-native.ps1
+          $native = (Resolve-Path artifacts/windows-native/x64-algetric-windows).Path
+          "AlgetricProjRoot=$native" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Publish and test Windows application
+        shell: pwsh
+        run: ./scripts/publish-windows.ps1 -ProjRoot $env:AlgetricProjRoot
+      - name: Ensure WebView2 Runtime
+        shell: pwsh
+        run: ./tests/windows/Ensure-WebView2.ps1
+      - name: Test installation and uninstall
+        shell: pwsh
+        run: ./tests/windows/Installation.Tests.ps1
+      - name: Real Windows WebView2 smoke test
+        shell: pwsh
+        env:
+          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --use-angle=swiftshader --enable-unsafe-swiftshader
+        run: |
+          dotnet run --project tests/Algetric.Smoke -c Release --no-restore
+          if ($LASTEXITCODE -ne 0) { throw 'Windows WebView2 smoke test failed.' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-build-and-smoke
+          path: |
+            artifacts/algetric-win-x64.zip
+            artifacts/algetric-win-x64.zip.sha256
+            artifacts/smoke/

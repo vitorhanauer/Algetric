@@ -1,8 +1,8 @@
 # Algetric
 
-Desktop editor for local geometries with a Cartesian plane and an Earth globe, built with .NET 10 and Avalonia for Linux x64. The interface follows `mockups/example.png`.
+Desktop editor for local geometries with a Cartesian plane and an Earth globe, built with .NET 10 and Avalonia for Linux and Windows x64. The interface follows `mockups/example.png`.
 
-## Install as a desktop application
+## Install on Linux
 
 Install the native dependencies first. A published package includes the .NET runtime and does not require the .NET SDK or Node.js.
 
@@ -59,14 +59,49 @@ bash "${XDG_DATA_HOME:-$HOME/.local/share}/algetric/application/uninstall.sh"
 
 Uninstalling removes the application, menu entry, icon, and command. Projects, settings, credentials, and downloaded maps are preserved. Installation honors `XDG_DATA_HOME`; `ALGETRIC_BIN_DIR` can override the command directory, which defaults to `~/.local/bin`.
 
+## Install on Windows
+
+Use the Windows x64 package `algetric-win-x64.zip`, produced by the Windows CI job or the publishing command below. Extract the ZIP, then double-click **install.cmd**. Algetric is installed for your current user without administrator privileges. Open **Algetric** from the Start menu and pin it to the taskbar if desired.
+
+The package includes the .NET runtime, PROJ DLLs and coordinate database, native license notices, and local Cesium assets. Microsoft Edge WebView2 Runtime must be installed separately. If the installer reports it is missing, install the Evergreen Runtime from [Microsoft's WebView2 download page](https://developer.microsoft.com/microsoft-edge/webview2/#download-section), then rerun `install.cmd`. A standalone WebView2 installer is available for computers without internet access.
+
+You can also install from PowerShell inside the extracted package:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+To create a desktop shortcut as well:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DesktopShortcut
+```
+
+The installer copies files to `%LOCALAPPDATA%\Programs\Algetric`, adds a Start menu shortcut, and registers Algetric in Windows **Installed apps / Apps & features**. Once installation succeeds, the extracted package can be removed. Close Algetric before updating, then run `install.cmd` from the newer package.
+
+Uninstall through Windows Settings or double-click `uninstall.cmd` in the installed application directory. Projects, settings, encrypted credentials, and downloaded maps in `%LOCALAPPDATA%\algetric` are preserved. Provider tokens are encrypted with Windows DPAPI for the current user; copying the encrypted files to another Windows account does not transfer access.
+
+### Build the Windows package
+
+On Windows x64, install the SDK specified in `global.json`, Node.js 24, Git, CMake, and Visual Studio 2022 C++ build tools with the Windows SDK. Run from PowerShell in the repository:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-windows.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
+```
+
+The publish script builds PROJ through a pinned vcpkg manifest, runs the tests, and creates `artifacts/algetric-win-x64.zip` with its SHA-256 checksum. Native builds use a static C runtime and dynamic PROJ/SQLite libraries, which are copied into the package together with `proj.db` and license files. No separate PROJ or .NET installation is needed on the target computer.
+
+To reuse an existing native build, supply `-ProjRoot <triplet-directory>` to `publish-windows.ps1`. When developing with `dotnet run` directly, set `$env:AlgetricProjRoot` to that same directory before restoring and building so the native DLLs and database are copied to the output.
+
 ## Run from source
 
-Requirements: the SDK specified in `global.json`, Node.js 24, PROJ and its database, WebKitGTK 4.1, GTK3, and WebGL acceleration. An X11 session or a Wayland session with XWayland must be available. Bearer credentials require `secret-tool` and an unlocked Secret Service.
+Linux source prerequisites: the SDK specified in `global.json` with the ASP.NET Core targeting pack, Node.js 24, PROJ and its database, WebKitGTK 4.1, GTK3, and WebGL acceleration. An X11 session or a Wayland session with XWayland must be available. Bearer credentials require `secret-tool` and an unlocked Secret Service.
 
 Arch Linux:
 
 ```sh
-sudo pacman -S --needed dotnet-sdk nodejs npm proj gtk3 webkit2gtk-4.1 libsecret
+sudo pacman -S --needed dotnet-sdk aspnet-runtime aspnet-targeting-pack nodejs npm proj gtk3 webkit2gtk-4.1 libsecret
 ```
 
 Ubuntu 24.04 (also install the .NET SDK and Node.js):
@@ -107,7 +142,7 @@ Local coordinates use meters in an ellipsoidal WGS84 azimuthal equidistant proje
 
 ## Maps and offline use
 
-Under **Map → Map provider**, configure an HTTPS raster XYZ server with `{z}`, `{x}`, and `{y}` placeholders, supported zoom levels, and attribution. Use your own server or a contracted provider that authorizes the intended use. No public server or paid service is preconfigured. Credentials must not be included in the URL; an optional Bearer token is stored in Linux Secret Service, separately from the project.
+Under **Map → Map provider**, configure an HTTPS raster XYZ server with `{z}`, `{x}`, and `{y}` placeholders, supported zoom levels, and attribution. Use your own server or a contracted provider that authorizes the intended use. No public server or paid service is preconfigured. Credentials must not be included in the URL; an optional Bearer token is stored in Linux Secret Service or encrypted with Windows DPAPI, separately from the project.
 
 To download regions, enable the provider's offline permission and open **Map → Offline regions**. Enter a name, west/east/south/north bounds in degrees, and zoom levels. The size estimate assumes 40 KB per tile; actual storage depends on the images. Each region is limited to 50,000 tiles. Regions cannot cross the antimeridian.
 
@@ -115,7 +150,7 @@ Downloads can be interrupted and resumed from the region list, including after r
 
 The map reads from the local SQLite store first, then requests missing tiles from the server. Online navigation does not automatically create persistent downloads. Without internet access, downloaded regions and geometries remain available; areas without tiles show a neutral background and a notice. Globe assets are local and do not require a network connection.
 
-Configuration and maps are stored in `~/.local/share/algetric`, or the data directory returned by the operating system. Projects contain only the origin, geometries, layers, styles, and view state. Maps and credentials are not included in project files.
+Configuration and maps are stored in `~/.local/share/algetric` on Linux or `%LOCALAPPDATA%\algetric` on Windows, using the data directory returned by the operating system. Projects contain only the origin, geometries, layers, styles, and view state. Maps and credentials are not included in project files.
 
 ## Verification and distribution
 

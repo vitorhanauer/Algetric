@@ -34,6 +34,16 @@ The CI configuration reproduces the build, tests, and smoke test on Ubuntu 24.04
 
 No real external provider was configured. Downloads, resumption, and network failures are verified with controlled HTTP fixtures. Production server behavior and performance must be checked with the provider chosen by the user. The MVP does not include 3D terrain coverage or a trajectory generation algorithm.
 
-## Recorded result
+## Recorded initial MVP result
 
 All 26 .NET tests and 2 JavaScript tests passed. The publishing script completed without compiler warnings. The smoke test covering WebGL, offline tiles, and transitions in both directions passed on Arch Linux and on Ubuntu 24.04 without networking. The self-contained binary also confirmed Cesium assets, WebKitGTK, and PROJ through the `--diagnostics` command.
+
+## Windows verification
+
+Run `pwsh -File tests/windows/Packaging.Tests.ps1` on any host with PowerShell to validate script syntax, ZIP contents, native dependencies and license notices, checksums, and rejection of a missing coordinate database. The package tests use controlled native fixtures; they do not execute Windows binaries.
+
+On a Windows machine with WebView2, build with `scripts/publish-windows.ps1`, then run `tests/windows/Installation.Tests.ps1`. It verifies Start menu shortcuts, Installed apps registration, installed-binary diagnostics, upgrades, uninstall, user data preservation, and rejection of unrelated directories. It requires a profile without an existing Algetric installation. The Windows-only .NET test verifies DPAPI round trips, absence of plaintext tokens, and corrupted credential rejection.
+
+The Windows CI job builds pinned native dependencies, runs these checks, and exercises the WebView2 smoke test. Its software-rendering browser flags apply only to the CI smoke process. Native Windows installation, DPAPI, and WebView2 execution cannot be validated from the Linux development host; the Windows runner must confirm them before release.
+
+For the Windows implementation, the Linux host passed 27 .NET tests (the DPAPI test was skipped), all five Linux installation/source-launcher tests, the portable PowerShell packaging checks, a self-contained win-x64 cross-publish, and the full Linux WebView smoke test with the Kestrel server. Native Windows execution remains pending the Windows CI job.
