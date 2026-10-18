@@ -29,7 +29,7 @@ internal static class LayerColorPicker
             Components = ColorSpectrumComponents.HueSaturation
         };
         spectrum.Bind(ColorSpectrum.HsvColorProperty, new Binding(nameof(ColorView.HsvColor)) { Source = picker, Mode = BindingMode.TwoWay });
-        AutomationProperties.SetName(spectrum, "Cor e saturação");
+        spectrum.Bind(AutomationProperties.NameProperty, UiText.Binding("Cor e saturação"));
         var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,12,Auto,12,Auto") };
         layout.Children.Add(CreateBrightnessSlider(picker));
         Grid.SetColumn(spectrum, 2); layout.Children.Add(spectrum);
@@ -47,7 +47,7 @@ internal static class LayerColorPicker
             IsAlphaVisible = false, IsPerceptive = true
         };
         slider.Bind(ColorSlider.HsvColorProperty, new Binding(nameof(ColorView.HsvColor)) { Source = picker, Mode = BindingMode.TwoWay });
-        AutomationProperties.SetName(slider, "Brilho");
+        slider.Bind(AutomationProperties.NameProperty, UiText.Binding("Brilho"));
         return slider;
     }
 
@@ -60,7 +60,7 @@ internal static class LayerColorPicker
             Background = new SolidColorBrush(picker.Color)
         };
         picker.ColorChanged += (_, args) => preview.Background = new SolidColorBrush(args.NewColor);
-        AutomationProperties.SetName(preview, "Cor selecionada");
+        preview.Bind(AutomationProperties.NameProperty, UiText.Binding("Cor selecionada"));
         return preview;
     }
 }

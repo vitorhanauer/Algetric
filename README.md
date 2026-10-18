@@ -141,7 +141,7 @@ Build the web assets before building the .NET application. The `Web/vendor` dire
 
 ## Usage
 
-The application interface is currently in Portuguese. The instructions below use English translations of its labels.
+The interface is available in Portuguese and English. Open **Idioma / Language** and choose **Português** or **English** to switch immediately; the application remembers your choice for the next launch. Language changes preserve the project, object names, and editing history. New installations start in Portuguese. The instructions below use the English labels.
 
 1. Set the origin through **Map → Geographic origin**, or choose **Set origin on map** and click the Earth. The default is São Paulo (−23.55°, −46.63°).
 2. New projects start without layers. Create the first layer with **+** before drawing objects. Layers contain their objects as indented rows. Click a layer name to choose it for new objects; use **+** beside **Layers** to add a layer. Drag an object row onto another layer to move it. During the drag, a floating preview follows the pointer and the original row disappears. Dropping outside another layer, pressing **Esc**, or losing pointer capture restores the row. Transfers support undo/redo. Use the color wheel, brightness bar, and preview when creating a layer or editing it through **⋯**; no hexadecimal entry is required. Open **⋯** on a layer and choose **Delete layer** to remove it and its objects. Populated layers ask for confirmation; deletion can be undone. Create points, segments, polylines, or polygons by clicking the plane or map. Finish polylines and polygons with a double-click, Enter, or **Finish**. Esc cancels the drawing.

@@ -26,7 +26,7 @@ internal sealed class ObjectPropertiesPanel : StackPanel
         var identity = Row("*,110"); var coordinates = Row("*,*");
         name = Field(identity, 0, "Nome", "PropertyName");
         var vertexField = new StackPanel { Spacing = 4 };
-        vertexField.Children.Add(new TextBlock { Text = "Vértice", FontSize = 12 });
+        vertexField.Children.Add(new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Vértice"), FontSize = 12 });
         vertexField.Children.Add(vertex); Grid.SetColumn(vertexField, 1); identity.Children.Add(vertexField);
         x = Field(coordinates, 0, "X (m)", "PropertyX"); y = Field(coordinates, 1, "Y (m)", "PropertyY");
         Children.Add(identity); Children.Add(coordinates); Children.Add(measurements);
@@ -42,7 +42,7 @@ internal sealed class ObjectPropertiesPanel : StackPanel
             var shape = model.Selected; objectId = shape?.Id; IsVisible = shape is not null;
             if (shape is null) return;
             name.Text = shape.Name;
-            vertex.ItemsSource = Enumerable.Range(1, shape.Vertices.Length).Select(i => $"Vértice {i}").ToArray();
+            vertex.ItemsSource = Enumerable.Range(1, shape.Vertices.Length).Select(i => UiText.F("Vértice {0}", i)).ToArray();
             vertexIndex = Math.Clamp(model.VertexIndex, 0, shape.Vertices.Length - 1);
             vertex.SelectedIndex = vertexIndex; RefreshCoordinates(shape); RefreshMeasurements(shape);
         }
@@ -82,7 +82,7 @@ internal sealed class ObjectPropertiesPanel : StackPanel
     private void RefreshMeasurements(GeometryObject shape)
     {
         var measure = GeometryRules.Measure(shape);
-        measurements.Text = $"Comprimento/perímetro: {measure.Length:N2} m\nÁrea: {measure.Area:N2} m²\nMedidas planimétricas";
+        measurements.Text = UiText.F("Comprimento/perímetro: {0:N2} m\nÁrea: {1:N2} m²\nMedidas planimétricas", measure.Length, measure.Area);
     }
     private TextBox Field(Grid row, int column, string label, string controlName)
     {

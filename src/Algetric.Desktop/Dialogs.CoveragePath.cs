@@ -23,7 +23,7 @@ internal static partial class Dialogs
         if (choices.Length == 0) { model.Try(() => throw new InvalidOperationException("Crie um polígono antes de gerar um caminho.")); return; }
         var panel = new StackPanel { Spacing = 12, Margin = new Thickness(20) };
         var inputs = new StackPanel { Spacing = 12 };
-        inputs.Children.Add(new TextBlock { Text = "Polígono", FontWeight = FontWeight.SemiBold });
+        inputs.Children.Add(new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Polígono"), FontWeight = FontWeight.SemiBold });
         var selector = new ComboBox { Name = "CoveragePolygon", ItemsSource = choices, SelectedValueBinding = new Binding(nameof(PolygonChoice.Id)), HorizontalAlignment = HorizontalAlignment.Stretch };
         inputs.Children.Add(selector);
         var obstructions = new CoverageObstructionInput(document); inputs.Children.Add(obstructions);
@@ -47,7 +47,7 @@ internal static partial class Dialogs
         var width = Field(first, "Largura de cobertura (m)", "10"); width.Name = "CoverageWidth";
         var overlap = Field(second, "Sobreposição (%)", "0"); overlap.Name = "CoverageOverlap";
         Grid.SetColumn(second, 1); row.Children.Add(first); row.Children.Add(second); inputs.Children.Add(row);
-        inputs.Children.Add(new TextBlock { Text = "Os pontos podem estar dentro ou fora do polígono. Sobreposição de 0% a menos de 100%.", TextWrapping = TextWrapping.Wrap, FontSize = 12 });
+        inputs.Children.Add(new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Os pontos podem estar dentro ou fora do polígono. Sobreposição de 0% a menos de 100%."), TextWrapping = TextWrapping.Wrap, FontSize = 12 });
         return (width, overlap);
     }
     private static void AddCoverageActions(StackPanel panel, StackPanel inputs, Window window, EditorViewModel model,
@@ -56,11 +56,11 @@ internal static partial class Dialogs
         var error = new TextBlock { Name = "CoverageError", TextWrapping = TextWrapping.Wrap };
         UiTheme.Bind(error, TextBlock.ForegroundProperty, "DangerText"); panel.Children.Add(error);
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
-        var cancel = new Button { Content = "Cancelar" }; cancel.Click += (_, _) => window.Close();
-        var generate = new Button { Name = "GenerateCoveragePath", Content = "Gerar caminho" };
+        var cancel = new Button { [!Button.ContentProperty] = UiText.Binding("Cancelar") }; cancel.Click += (_, _) => window.Close();
+        var generate = new Button { Name = "GenerateCoveragePath", [!Button.ContentProperty] = UiText.Binding("Gerar caminho") };
         generate.Click += async (_, _) =>
         {
-            inputs.IsEnabled = generate.IsEnabled = false; error.Text = ""; generate.Content = "Gerando…";
+            inputs.IsEnabled = generate.IsEnabled = false; error.Text = ""; generate.Content = UiText.T("Gerando…");
             try
             {
                 var selected = polygon.SelectedItem as PolygonChoice ?? throw new ArgumentException("Selecione um polígono.");
@@ -68,8 +68,8 @@ internal static partial class Dialogs
                 if (!token.IsCancellationRequested) window.Close();
             }
             catch (OperationCanceledException) { }
-            catch (Exception exception) { error.Text = exception.Message; }
-            finally { inputs.IsEnabled = generate.IsEnabled = true; generate.Content = "Gerar caminho"; }
+            catch (Exception exception) { error.Text = UiText.T(exception.Message); }
+            finally { inputs.IsEnabled = generate.IsEnabled = true; generate.Content = UiText.T("Gerar caminho"); }
         };
         footer.Children.Add(cancel); footer.Children.Add(generate); panel.Children.Add(footer);
         window.KeyDown += (_, args) => { if (args.Key == Key.Escape) { window.Close(); args.Handled = true; } };

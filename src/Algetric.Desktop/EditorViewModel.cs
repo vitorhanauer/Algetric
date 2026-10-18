@@ -17,10 +17,11 @@ public sealed partial class EditorViewModel : INotifyPropertyChanged
     public EditorTool Tool => IsTemporaryMove ? EditorTool.Move : SelectedTool;
     public int VertexIndex { get; set; }
     public string? FilePath { get; set; }
-    public string Status { get; private set; } = "Pronto • Coordenadas locais em metros";
+    private string statusMessage = "Pronto • Coordenadas locais em metros";
+    public string Status => UiText.T(statusMessage);
     public TileProvider? Provider { get; set; }
     public long Revision { get; private set; }
-    public string Title => $"Algetric — {(FilePath is null ? "Novo projeto" : Path.GetFileName(FilePath))}{(Editor.IsDirty ? " *" : "")}";
+    public string Title => $"Algetric — {(FilePath is null ? UiText.T("Novo projeto") : Path.GetFileName(FilePath))}{(Editor.IsDirty ? " *" : "")}";
     public GeometryObject? Selected => Editor.Document.Objects.FirstOrDefault(o => o.Id == Editor.SelectedId);
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? Changed;
@@ -33,7 +34,7 @@ public sealed partial class EditorViewModel : INotifyPropertyChanged
     {
         Revision++; PropertyChanged?.Invoke(this, new(null)); Changed?.Invoke();
     }
-    public void SetStatus(string value) { Status = value; PropertyChanged?.Invoke(this, new(nameof(Status))); }
+    public void SetStatus(string value) { statusMessage = value; PropertyChanged?.Invoke(this, new(nameof(Status))); }
     public void SetTool(EditorTool tool) { SelectedTool = tool; IsTemporaryMove = false; OnChanged(); }
     public void BeginTemporaryMove()
     { if (IsTemporaryMove) return; IsTemporaryMove = true; OnChanged(); }

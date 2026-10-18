@@ -17,7 +17,7 @@ internal sealed class CoverageObstructionInput : StackPanel
         Name = "CoverageObstructions", SelectionMode = SelectionMode.Multiple | SelectionMode.Toggle,
         MaxHeight = 120, HorizontalAlignment = HorizontalAlignment.Stretch
     };
-    private readonly TextBlock empty = new() { Text = "Não há outros polígonos disponíveis.", FontSize = 12 };
+    private readonly TextBlock empty = new() { [!TextBlock.TextProperty] = UiText.Binding("Não há outros polígonos disponíveis."), FontSize = 12 };
     private readonly Choice[] choices;
 
     public CoverageObstructionInput(ProjectDocument document)
@@ -25,9 +25,9 @@ internal sealed class CoverageObstructionInput : StackPanel
         choices = document.Objects.Where(shape => shape.Kind == ShapeKind.Polygon)
             .Select(shape => new Choice(shape, $"{shape.Name} — {document.Layers.First(layer => layer.Id == shape.LayerId).Name}")).ToArray();
         Spacing = 4;
-        Children.Add(new TextBlock { Text = "Obstruções (opcional)", FontWeight = FontWeight.SemiBold });
+        Children.Add(new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Obstruções (opcional)"), FontWeight = FontWeight.SemiBold });
         Children.Add(selector); Children.Add(empty);
-        Children.Add(new TextBlock { Text = "Clique para marcar ou desmarcar vários polígonos. Sem seleção, não há obstruções. Apenas as totalmente internas serão usadas.",
+        Children.Add(new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Clique para marcar ou desmarcar vários polígonos. Sem seleção, não há obstruções. Apenas as totalmente internas serão usadas."),
             TextWrapping = TextWrapping.Wrap, FontSize = 12 });
     }
 

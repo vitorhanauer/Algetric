@@ -13,7 +13,7 @@ using System.Net.Http.Headers;
 
 namespace Algetric.Desktop;
 
-public sealed class MainWindow : Window
+public sealed partial class MainWindow : Window
 {
     private readonly EditorViewModel model = new();
     private readonly CartesianCanvas canvas;
@@ -38,6 +38,7 @@ public sealed class MainWindow : Window
         Width = 1380; Height = 880; MinWidth = 940; MinHeight = 620;
         dataDirectory = storageDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "algetric");
         Directory.CreateDirectory(dataDirectory);
+        UiText.Initialize(dataDirectory);
         tiles = new(Path.Combine(dataDirectory, "maps.sqlite")); settings = new(dataDirectory);
         canvas = new(model); warningToast = new();
         model.WarningRequested += warningToast.Show;
@@ -51,6 +52,7 @@ public sealed class MainWindow : Window
         server.Diagnostic += message => Dispatcher.UIThread.Post(() => model.SetStatus(message));
         map.Source = new Uri(server.BaseUri, "index.html");
         Content = BuildLayout(); DataContext = model;
+        UiText.Current.PropertyChanged += OnLanguageChanged;
         model.Changed += Refresh;
         model.FileActionRequested += command => _ = RunAsync(command switch { "save" => () => SaveAsync(false), "open" => OpenAsync, "addLayer" => () => EditLayerAsync(null), _ => NewAsync });
         model.PropertyChanged += (_, _) => { Title = model.Title; status.Text = model.Status; };
@@ -59,7 +61,7 @@ public sealed class MainWindow : Window
         AddHandler(KeyUpEvent, OnMoveKeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
         Deactivated += (_, _) => { model.EndTemporaryMove(); layers.CancelDrag(); };
         Closing += OnClosing;
-        Closed += (_, _) => { warningToast.IsOpen = false; server.Dispose(); client.Dispose(); };
+        Closed += (_, _) => { UiText.Current.PropertyChanged -= OnLanguageChanged; warningToast.IsOpen = false; server.Dispose(); client.Dispose(); };
         Opened += async (_, _) => await RunAsync(LoadProviderAsync);
         Refresh();
     }
@@ -73,8 +75,8 @@ public sealed class MainWindow : Window
         var left = BuildSidebar();
         DockPanel.SetDock(left, Dock.Left); root.Children.Add(left);
         var tabs = new TabControl();
-        tabs.Items.Add(new TabItem { Header = "Plano cartesiano", Content = canvas });
-        tabs.Items.Add(new TabItem { Header = "🌐 Mapa", Content = map });
+        tabs.Items.Add(new TabItem { [!TabItem.HeaderProperty] = UiText.Binding("Plano cartesiano"), Content = canvas });
+        tabs.Items.Add(new TabItem { [!TabItem.HeaderProperty] = UiText.Binding("🌐 Mapa"), Content = map });
         tabs.SelectionChanged += (_, _) => { layers.CancelDrag(); model.EndTemporaryMove(); canvas.CancelDraft(); }; root.Children.Add(tabs);
         var overlay = new Grid(); warningToast.PlacementTarget = overlay; overlay.Children.Add(root); overlay.Children.Add(dragOverlay); overlay.Children.Add(warningToast);
         return overlay;
@@ -102,7 +104,7 @@ public sealed class MainWindow : Window
     }
     private MenuItem BuildAppearanceMenu()
     {
-        var appearance = new MenuItem { Header = "Aparência" };
+        var appearance = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Aparência") };
         var system = Item("Seguir o sistema", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Default)); system.Name = "SystemTheme";
         var light = Item("Tema claro", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Light)); light.Name = "LightTheme";
         var dark = Item("Tema escuro", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Dark)); dark.Name = "DarkTheme";
@@ -118,29 +120,30 @@ public sealed class MainWindow : Window
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         var add = Button("+", () => EditLayerAsync(null)); add.Name = "AddLayer";
-        ToolTip.SetTip(add, "Criar camada (Ctrl+Shift+N)"); Avalonia.Automation.AutomationProperties.SetName(add, "Criar camada");
+        add.Bind(ToolTip.TipProperty, UiText.Binding("Criar camada (Ctrl+Shift+N)"));
+        add.Bind(Avalonia.Automation.AutomationProperties.NameProperty, UiText.Binding("Criar camada"));
         Grid.SetColumn(add, 1); var title = Heading("Camadas"); title.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(title); row.Children.Add(add); return row;
     }
     private Menu BuildMenu()
     {
-        var menu = new Menu(); var file = new MenuItem { Header = "Arquivo" };
+        var menu = new Menu(); var file = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Arquivo") };
         file.Items.Add(Item("Novo", NewAsync)); file.Items.Add(Item("Abrir…", OpenAsync));
         file.Items.Add(Item("Salvar", () => SaveAsync(false))); file.Items.Add(Item("Salvar como…", () => SaveAsync(true)));
         file.Items.Add(Item("Sair", () => { Close(); return Task.CompletedTask; }));
-        var edit = new MenuItem { Header = "Editar" };
+        var edit = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Editar") };
         edit.Items.Add(Item("Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }));
         edit.Items.Add(Item("Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; }));
         edit.Items.Add(Item("Excluir objeto", () => { model.Editor.DeleteSelected(); return Task.CompletedTask; }));
         edit.Items.Add(Item("Gerar caminho de pontos…", () => Dialogs.GenerateCoveragePath(this, model, model.Selected?.Kind == ShapeKind.Polygon ? model.Selected.Id : null)));
-        var maps = new MenuItem { Header = "Mapa" }; maps.Items.Add(Item("Origem geográfica…", EditOriginAsync));
+        var maps = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Mapa") }; maps.Items.Add(Item("Origem geográfica…", EditOriginAsync));
         maps.Items.Add(Item("Definir origem no mapa", () => { model.SetTool(EditorTool.Origin); return Task.CompletedTask; }));
         maps.Items.Add(Item("Provedor de mapas…", EditProviderAsync)); maps.Items.Add(Item("Regiões offline…", OfflineAsync));
-        var help = new MenuItem { Header = "Ajuda" }; help.Items.Add(Item("Como editar", async () =>
+        var help = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Ajuda") }; help.Items.Add(Item("Como editar", async () =>
         {
             await Dialogs.Message(this, "Como editar", "Escolha uma ferramenta e clique para criar.\nLinhas e polígonos: duplo clique ou Enter para concluir; Esc cancela.\nSelecionar: arraste no espaço vazio para selecionar uma área; arraste um vértice ou objeto para mover.\nPlano: Mover + arraste navega; segure Espaço para mover temporariamente.\nSolte Espaço para voltar à ferramenta anterior. Botão direito/central também move; roda ajusta o zoom.\nMapa: use Mover para navegar; use o zoom para alternar globo e 2D.\nMedidas planimétricas • limite de 50 km da origem.");
         }));
-        menu.Items.Add(file); menu.Items.Add(edit); menu.Items.Add(maps); menu.Items.Add(BuildAppearanceMenu()); menu.Items.Add(help); return menu;
+        menu.Items.Add(file); menu.Items.Add(edit); menu.Items.Add(maps); menu.Items.Add(BuildAppearanceMenu()); menu.Items.Add(BuildLanguageMenu()); menu.Items.Add(help); return menu;
     }
     private Control BuildToolbar()
     {
@@ -149,10 +152,6 @@ public sealed class MainWindow : Window
         {
             var button = ToolbarButton(shortcut.Icon, shortcut.Label,
                 () => { SelectTool(shortcut.Tool); return Task.CompletedTask; });
-            var hint = $"{shortcut.Label} ({shortcut.Key})";
-            if (shortcut.Tool == EditorTool.Move) hint += " • segure Espaço para mover temporariamente";
-            if (shortcut.Tool is EditorTool.Polyline or EditorTool.Polygon) hint += " • Enter ou duplo clique para concluir";
-            ToolTip.SetTip(button, hint);
             tools.Add((button, shortcut.Tool)); panel.Children.Add(button);
         }
         panel.Children.Add(ToolbarButton("↶", "Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }, "Ctrl+Z"));
@@ -168,8 +167,8 @@ public sealed class MainWindow : Window
         button.VerticalContentAlignment = VerticalAlignment.Center;
         button.Background = Brushes.Transparent;
         if (icon == "mouse") button.Content = MousePointerIcon(button);
-        ToolTip.SetTip(button, shortcut is null ? label : $"{label} ({shortcut})");
-        Avalonia.Automation.AutomationProperties.SetName(button, label);
+        button.Bind(ToolTip.TipProperty, UiText.Binding(shortcut is null ? label : $"{label} ({shortcut})"));
+        button.Bind(Avalonia.Automation.AutomationProperties.NameProperty, UiText.Binding(label));
         return button;
     }
     private static Control MousePointerIcon(Button button)
@@ -187,9 +186,9 @@ public sealed class MainWindow : Window
     {
         Title = model.Title; status.Text = model.Status;
         selectionSummary.IsVisible = model.Editor.SelectedIds.Count > 1;
-        selectionSummary.Text = $"{model.Editor.SelectedIds.Count} objetos selecionados";
+        selectionSummary.Text = UiText.F("{0} objetos selecionados", model.Editor.SelectedIds.Count);
         foreach (var (button, tool) in tools) UiTheme.SetHighlight(button, Avalonia.Controls.Button.BackgroundProperty, model.Tool == tool, "ActiveTool");
-        layers.Refresh(); properties.Refresh(); _ = SyncMapAsync();
+        RefreshTooltips(); layers.Refresh(); properties.Refresh(); _ = SyncMapAsync();
     }
     private async Task SyncMapAsync()
     {
@@ -217,9 +216,9 @@ public sealed class MainWindow : Window
         if (!await ConfirmUnsavedAsync()) return;
         var files = await StorageProvider.OpenFilePickerAsync(new()
         {
-            Title = "Abrir projeto",
+            Title = UiText.T("Abrir projeto"),
             AllowMultiple = false,
-            FileTypeFilter = [new("Projeto Algetric") { Patterns = ["*.algetric"] }]
+            FileTypeFilter = [new(UiText.T("Projeto Algetric")) { Patterns = ["*.algetric"] }]
         });
         if (files.Count == 0) return;
         var path = files[0].TryGetLocalPath() ?? throw new IOException("Selecione um arquivo local.");
@@ -232,10 +231,10 @@ public sealed class MainWindow : Window
         {
             var file = await StorageProvider.SaveFilePickerAsync(new()
             {
-                Title = "Salvar projeto",
+                Title = UiText.T("Salvar projeto"),
                 SuggestedFileName = "Projeto.algetric",
                 DefaultExtension = "algetric",
-                FileTypeChoices = [new("Projeto Algetric") { Patterns = ["*.algetric"] }]
+                FileTypeChoices = [new(UiText.T("Projeto Algetric")) { Patterns = ["*.algetric"] }]
             });
             if (file is null) return; path = file.TryGetLocalPath() ?? throw new IOException("Selecione um arquivo local.");
         }
@@ -305,7 +304,7 @@ public sealed class MainWindow : Window
     }
     private static TextBlock Heading(string text)
     {
-        var heading = new TextBlock { Text = text, FontWeight = FontWeight.Bold };
+        var heading = new TextBlock { [!TextBlock.TextProperty] = UiText.Binding(text), FontWeight = FontWeight.Bold };
         UiTheme.Bind(heading, TextBlock.ForegroundProperty, "HeadingText");
         return heading;
     }
@@ -315,7 +314,7 @@ public sealed class MainWindow : Window
         button.Click += async (_, _) => await RunAsync(action); return button;
     }
     private MenuItem Item(string label, Func<Task> action)
-    { var item = new MenuItem { Header = label }; item.Click += async (_, _) => await RunAsync(action); return item; }
+    { var item = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding(label) }; item.Click += async (_, _) => await RunAsync(action); return item; }
     private async Task RunAsync(Func<Task> action)
     {
         try { await action(); }

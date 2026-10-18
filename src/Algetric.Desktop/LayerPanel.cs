@@ -76,24 +76,24 @@ internal sealed partial class LayerPanel : StackPanel
             }
             row.Name.Text = shape.Name;
             UiTheme.SetHighlight(row.Select, Button.BackgroundProperty, model.Editor.SelectedIds.Contains(shape.Id), "SelectedObject");
-            Avalonia.Automation.AutomationProperties.SetName(row.Delete, $"Excluir {shape.Name}");
-            ToolTip.SetTip(row.Delete, $"Excluir {shape.Name}"); index++;
+            Avalonia.Automation.AutomationProperties.SetName(row.Delete, UiText.F("Excluir {0}", shape.Name));
+            ToolTip.SetTip(row.Delete, UiText.F("Excluir {0}", shape.Name)); index++;
         }
     }
     private LayerRow CreateLayerRow(Guid id)
     {
         var name = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = FontWeight.SemiBold };
         var select = ActionButton(name, () => model.Editor.SetActiveLayer(id)); select.Name = $"SelectLayer_{id:N}";
-        ToolTip.SetTip(select, "Clique para ativar; duplo clique para editar; botão direito para opções");
+        select.Bind(ToolTip.TipProperty, UiText.Binding("Clique para ativar; duplo clique para editar; botão direito para opções"));
         ConfigureLayerActions(select, id);
         var visible = new CheckBox { VerticalAlignment = VerticalAlignment.Center };
-        ToolTip.SetTip(visible, "Mostrar ou ocultar camada");
+        visible.Bind(ToolTip.TipProperty, UiText.Binding("Mostrar ou ocultar camada"));
         visible.IsCheckedChanged += (_, _) => { if (!refreshing) model.Try(() => model.Editor.UpdateLayer(CurrentLayer(id) with { Visible = visible.IsChecked == true })); };
         var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         Grid.SetColumn(select, 1);
         header.Children.Add(visible); header.Children.Add(select);
         var objects = new StackPanel { Name = $"LayerObjects_{id:N}", Margin = new Thickness(18, 0, 0, 0), Spacing = 2 };
-        var empty = new TextBlock { Text = "Sem objetos", Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(24, 4, 0, 6) };
+        var empty = new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Sem objetos"), Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(24, 4, 0, 6) };
         var content = new StackPanel { Spacing = 2 }; content.Children.Add(header); content.Children.Add(objects); content.Children.Add(empty);
         var card = new Border { Name = $"Layer_{id:N}", Child = content, Padding = new Thickness(4), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1), Background = Brushes.Transparent };
         return new(card, select, name, visible, objects, empty);
@@ -106,9 +106,9 @@ internal sealed partial class LayerPanel : StackPanel
             e.Handled = true;
             editLayer(CurrentLayer(id));
         }, RoutingStrategies.Tunnel);
-        var edit = new MenuItem { Header = "Editar" };
+        var edit = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Editar") };
         edit.Click += (_, _) => editLayer(CurrentLayer(id));
-        var delete = new MenuItem { Header = "Excluir" };
+        var delete = new MenuItem { [!MenuItem.HeaderProperty] = UiText.Binding("Excluir") };
         delete.Click += (_, _) => deleteLayer(CurrentLayer(id));
         select.ContextMenu = new ContextMenu { Items = { edit, delete } };
     }

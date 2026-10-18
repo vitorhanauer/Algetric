@@ -16,8 +16,8 @@ internal sealed class CoveragePointInput : StackPanel
     public CoveragePointInput(string title, string prefix, IEnumerable<GeometryObject> points)
     {
         Spacing = 6;
-        Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.SemiBold });
-        var choices = new List<PointChoice> { new("Informar coordenadas", null) };
+        Children.Add(new TextBlock { Text = UiText.T(title), FontWeight = FontWeight.SemiBold });
+        var choices = new List<PointChoice> { new(UiText.T("Informar coordenadas"), null) };
         choices.AddRange(points.Select(point => new PointChoice($"{point.Name} ({Dialogs.Number(point.Vertices[0].X)}; {Dialogs.Number(point.Vertices[0].Y)})", point.Vertices[0])));
         coordinateAndObjectChoices = choices.ToArray();
         selector = new ComboBox { Name = $"Coverage{prefix}Point", ItemsSource = coordinateAndObjectChoices, HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -33,7 +33,7 @@ internal sealed class CoveragePointInput : StackPanel
     public void SetPolygon(GeometryObject polygon, int defaultVertex)
     {
         var vertices = polygon.Vertices.Select((point, index) => new PointChoice(
-            $"Vértice {index + 1} — {polygon.Name} ({Dialogs.Number(point.X)}; {Dialogs.Number(point.Y)})", point));
+            UiText.F("Vértice {0} — {1} ({2}; {3})", index + 1, polygon.Name, Dialogs.Number(point.X), Dialogs.Number(point.Y)), point));
         selector.ItemsSource = coordinateAndObjectChoices.Concat(vertices).ToArray();
         selector.SelectedIndex = coordinateAndObjectChoices.Length + defaultVertex;
     }

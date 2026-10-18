@@ -27,7 +27,7 @@ internal sealed class WarningToast : Popup
     }
     public void Show(string text)
     {
-        message.Text = text;
+        message.Bind(TextBlock.TextProperty, UiText.Binding(text));
         message.MaxWidth = Math.Max(180, Math.Min(500, PlacementTarget!.Bounds.Width - 84));
         dismissTimer.Stop(); IsOpen = true; dismissTimer.Start();
     }
