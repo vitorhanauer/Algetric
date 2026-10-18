@@ -11,7 +11,7 @@ namespace Algetric.Desktop;
 internal sealed partial class LayerPanel : StackPanel
 {
     private sealed record LayerRow(Border Card, Button Select, TextBlock Name, CheckBox Visible, StackPanel Objects, TextBlock Empty);
-    private sealed record ObjectRow(Grid Row, Button Select, TextBlock Name, Button Delete);
+    private sealed record ObjectRow(Grid Row, Button Select, TextBlock Name, Button Delete, CheckBox? Visible);
     private readonly EditorViewModel model;
     private readonly Action<Layer> editLayer;
     private readonly Action<Layer> deleteLayer;
@@ -75,6 +75,7 @@ internal sealed partial class LayerPanel : StackPanel
                 (row.Row.Parent as Panel)?.Children.Remove(row.Row); container.Children.Insert(index, row.Row);
             }
             row.Name.Text = shape.Name;
+            if (row.Visible is { } visible) visible.IsChecked = shape.Visible;
             UiTheme.SetHighlight(row.Select, Button.BackgroundProperty, model.Editor.SelectedIds.Contains(shape.Id), "SelectedObject");
             Avalonia.Automation.AutomationProperties.SetName(row.Delete, UiText.F("Excluir {0}", shape.Name));
             ToolTip.SetTip(row.Delete, UiText.F("Excluir {0}", shape.Name)); index++;
@@ -130,9 +131,23 @@ internal sealed partial class LayerPanel : StackPanel
         }, () => model.Editor.Delete(id));
         UiTheme.Bind((Avalonia.Controls.Shapes.Path)delete.Content!, Avalonia.Controls.Shapes.Shape.StrokeProperty, "DangerText");
         delete.Name = $"DeleteObject_{id:N}";
-        var row = new Grid { Name = $"Object_{id:N}", ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        Grid.SetColumn(delete, 1); row.Children.Add(select); row.Children.Add(delete);
-        return new(row, select, name, delete);
+        var row = new Grid { Name = $"Object_{id:N}", ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        Grid.SetColumn(select, 1); Grid.SetColumn(delete, 2); row.Children.Add(select); row.Children.Add(delete);
+        var visible = AddPolygonVisibility(row, id);
+        return new(row, select, name, delete, visible);
+    }
+    private CheckBox? AddPolygonVisibility(Grid row, Guid id)
+    {
+        if (model.Editor.Document.Objects.First(shape => shape.Id == id).Kind != ShapeKind.Polygon) return null;
+        var visible = new CheckBox { Name = $"ObjectVisible_{id:N}", VerticalAlignment = VerticalAlignment.Center };
+        visible.Bind(ToolTip.TipProperty, UiText.Binding("Mostrar ou ocultar polígono"));
+        visible.Bind(Avalonia.Automation.AutomationProperties.NameProperty, UiText.Binding("Mostrar ou ocultar polígono"));
+        visible.IsCheckedChanged += (_, _) =>
+        {
+            if (!refreshing) model.Try(() => model.Editor.SetObjectVisibility(id, visible.IsChecked == true));
+        };
+        row.Children.Add(visible);
+        return visible;
     }
     private Layer CurrentLayer(Guid id) => model.Editor.Document.Layers.First(layer => layer.Id == id);
     private void UpdateEmptyLayers()
