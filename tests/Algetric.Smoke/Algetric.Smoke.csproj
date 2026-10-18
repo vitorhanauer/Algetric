@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Algetric.Desktop/Algetric.Desktop.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../../src/Algetric.Desktop/Web/**/*" Exclude="../../src/Algetric.Desktop/Web/node_modules/**/*;../../src/Algetric.Desktop/Web/package*.json;../../src/Algetric.Desktop/Web/build.mjs" Link="Web/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
