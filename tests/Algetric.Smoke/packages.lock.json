@@ -22,6 +22,15 @@
         "resolved": "11.3.2",
         "contentHash": "qHDToxto1e3hci5YqbG9n0Ty8mlp3zBUN5wT66wKqaDVzXyQ0do3EnRILd4Ke9jpvsktaPpgE0YjEk7hornryQ=="
       },
+      "Avalonia.Controls.ColorPicker": {
+        "type": "Transitive",
+        "resolved": "12.1.1",
+        "contentHash": "OZzmYVmbYhegdGjvrHeSQVbqINY6g0OMv5HFDiu7lAuaoNcydC5lkmdd+Wn1W+wDjICM488vUkI6xhxy0xbfJQ==",
+        "dependencies": {
+          "Avalonia": "12.1.1",
+          "Avalonia.Remote.Protocol": "12.1.1"
+        }
+      },
       "Avalonia.Controls.WebView": {
         "type": "Transitive",
         "resolved": "12.1.1",
@@ -275,6 +284,7 @@
         "type": "Project",
         "dependencies": {
           "Algetric.Infrastructure": "[1.0.0, )",
+          "Avalonia.Controls.ColorPicker": "[12.1.1, )",
           "Avalonia.Controls.WebView": "[12.1.1, )",
           "Avalonia.Desktop": "[12.1.1, )",
           "Avalonia.Fonts.Inter": "[12.1.1, )",

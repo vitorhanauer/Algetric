@@ -20,6 +20,8 @@ The editor smoke scenario checks the **+** button in the layer heading, indented
 
 The layer dialog smoke check confirms that deleting a populated layer asks for confirmation, cancellation preserves the project, and deletion plus its objects can be undone in one step. Domain tests cover deleting the last layer, preserving unrelated selection and the active layer, and ignoring already-deleted layer identifiers.
 
+The layer color smoke check uses pointer input on the circular spectrum, changes brightness, checks the existing color and opaque RGB storage, verifies cancel/apply and undo, and creates a layer with a selected color. It renders `artifacts/smoke/layer-color-wheel.png` for visual inspection.
+
 Domain tests also reject nonexistent objects/layers, avoid history entries for unchanged destinations, and verify that selecting an active layer does not mark the project modified.
 
 ## Desktop installation tests

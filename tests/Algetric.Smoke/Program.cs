@@ -20,7 +20,10 @@ internal static class Program
 }
 public sealed partial class SmokeApplication : Application
 {
-    public override void Initialize() { Styles.Add(new FluentTheme()); RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light; }
+    public override void Initialize() { Styles.Add(new FluentTheme());
+        Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://Avalonia.Controls.ColorPicker/"))
+        { Source = new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml") });
+        RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light; }
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -53,6 +56,7 @@ public sealed partial class SmokeApplication : Application
         VerifyNavigation(window, model);
         await VerifyLayerPanelAsync(window, model);
         await VerifyLayerDeletionAsync(window, model);
+        await VerifyLayerColorsAsync(window, model);
         model.Editor.MarkSaved();
         await Task.Delay(1000);
         Directory.CreateDirectory("artifacts/smoke");

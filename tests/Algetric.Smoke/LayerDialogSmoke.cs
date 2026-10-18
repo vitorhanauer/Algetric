@@ -1,6 +1,11 @@
 using Algetric.Core;
 using Algetric.Desktop;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -33,5 +38,49 @@ public sealed partial class SmokeApplication
         CheckLayer(model.Editor.Document.Layers.Contains(layer) && model.Editor.Document.Objects.Length == original.Objects.Length, "Layer deletion must undo in one step.");
         model.Load(original); model.Editor.Select(original.Objects[0].Id);
         Console.WriteLine("LAYER DELETE PASS: populated-layer confirmation, cancel, deletion and undo.");
+    }
+    private static async Task VerifyLayerColorsAsync(MainWindow window, EditorViewModel model)
+    {
+        var original = model.Editor.Document; var layer = original.Layers[0];
+        var dialog = await OpenLayerEditorAsync(window, layer.Id);
+        var picker = dialog.GetVisualDescendants().OfType<ColorView>().Single(control => control.Name == "LayerColorPicker");
+        CheckLayer(picker.Color == Color.Parse(layer.Color) && !picker.IsAlphaEnabled && !picker.IsHexInputVisible, "The wheel must load the existing opaque layer color without a hex field.");
+        await VerifyWheelInteractionAsync(dialog, picker);
+        dialog.Close(); CheckLayer(ReferenceEquals(original, model.Editor.Document), "Closing the color dialog must discard edits.");
+        dialog = await OpenLayerEditorAsync(window, layer.Id);
+        picker = dialog.GetVisualDescendants().OfType<ColorView>().Single(); picker.Color = Colors.CornflowerBlue;
+        dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Aplicar")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Task.Delay(50);
+        CheckLayer(model.Editor.Document.Layers[0].Color == "#6495ED", "Applying the wheel must save an RGB layer color.");
+        model.Editor.Undo(); CheckLayer(model.Editor.Document.Layers[0] == layer, "Changing a layer color must undo in one operation.");
+        LayerControl<Button>(window, "AddLayer").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(100);
+        dialog = LayerDialog("Camada");
+        CheckLayer(!dialog.GetVisualDescendants().OfType<Button>().Any(button => button.Name == "DeleteLayer"), "New layers must not offer deletion before creation.");
+        dialog.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "LayerName").Text = "Camada colorida";
+        dialog.GetVisualDescendants().OfType<ColorView>().Single().Color = Colors.Orange;
+        dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Aplicar")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Task.Delay(50);
+        CheckLayer(model.Editor.Document.Layers.Last().Color == "#FFA500", "Creating a layer must use its selected wheel color.");
+        model.Load(original); model.Editor.Select(original.Objects[0].Id);
+        Console.WriteLine("LAYER COLOR PASS: wheel pointer input, brightness, preview, cancel, edit, undo and creation.");
+    }
+    private static async Task VerifyWheelInteractionAsync(Window dialog, ColorView picker)
+    {
+        var spectrum = dialog.GetVisualDescendants().OfType<ColorSpectrum>().Single(control => control.IsEffectivelyVisible);
+        CheckLayer(spectrum.Shape == ColorSpectrumShape.Ring && spectrum.Bounds.Width > 0, "The color wheel must be visible and circular.");
+        var initial = picker.Color; var pointer = new Avalonia.Input.Pointer(301, PointerType.Mouse, true);
+        var position = spectrum.TranslatePoint(new Point(spectrum.Bounds.Width * 0.85, spectrum.Bounds.Height * 0.5), dialog)!.Value;
+        var target = (Control)dialog.InputHitTest(position)!;
+        target.RaiseEvent(new PointerPressedEventArgs(target, pointer, dialog, position, 0,
+            new PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 1));
+        target.RaiseEvent(new PointerReleasedEventArgs(target, pointer, dialog, position, 1, new PointerPointProperties(), KeyModifiers.None, MouseButton.Left));
+        CheckLayer(picker.Color != initial, "Clicking the color wheel must select a different color.");
+        var brightness = dialog.GetVisualDescendants().OfType<ColorSlider>().Single(control => control.IsEffectivelyVisible);
+        var beforeBrightness = picker.Color; brightness.Value = brightness.Maximum * 0.85;
+        CheckLayer(picker.Color != beforeBrightness, "The brightness slider must update the selected color.");
+        await Task.Delay(100);
+        Directory.CreateDirectory("artifacts/smoke");
+        using var bitmap = new RenderTargetBitmap(new PixelSize((int)dialog.Bounds.Width, (int)dialog.Bounds.Height));
+        bitmap.Render(dialog); bitmap.Save("artifacts/smoke/layer-color-wheel.png", PngBitmapEncoderOptions.Default);
     }
 }

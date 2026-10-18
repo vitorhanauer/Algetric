@@ -5,7 +5,7 @@ The application uses the components listed below. Lockfiles also record transiti
 | Component | License / source |
 |---|---|
 | .NET | MIT, https://github.com/dotnet/runtime |
-| Avalonia and Avalonia.Controls.WebView | MIT, https://github.com/AvaloniaUI/Avalonia |
+| Avalonia, Avalonia.Controls.WebView, and Avalonia.Controls.ColorPicker | MIT, https://github.com/AvaloniaUI/Avalonia |
 | Inter | SIL Open Font License 1.1, https://github.com/rsms/inter |
 | NetTopologySuite | BSD-3-Clause, https://github.com/NetTopologySuite/NetTopologySuite |
 | CesiumJS | Apache-2.0, https://github.com/CesiumGS/cesium |

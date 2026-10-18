@@ -2,6 +2,16 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "Avalonia.Controls.ColorPicker": {
+        "type": "Direct",
+        "requested": "[12.1.1, )",
+        "resolved": "12.1.1",
+        "contentHash": "OZzmYVmbYhegdGjvrHeSQVbqINY6g0OMv5HFDiu7lAuaoNcydC5lkmdd+Wn1W+wDjICM488vUkI6xhxy0xbfJQ==",
+        "dependencies": {
+          "Avalonia": "12.1.1",
+          "Avalonia.Remote.Protocol": "12.1.1"
+        }
+      },
       "Avalonia.Controls.WebView": {
         "type": "Direct",
         "requested": "[12.1.1, )",

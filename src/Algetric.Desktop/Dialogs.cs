@@ -45,12 +45,23 @@ internal static class Dialogs
     public static async Task EditLayer(Window owner, EditorViewModel model, Layer? layer)
     {
         var panel = new StackPanel { Spacing = 8, Margin = new Thickness(20) };
-        var name = Field(panel, "Nome", layer?.Name ?? "Nova camada"); var color = Field(panel, "Cor (#RRGGBB)", layer?.Color ?? "#009CA6");
+        var name = Field(panel, "Nome", layer?.Name ?? "Nova camada"); name.Name = "LayerName";
+        panel.Children.Add(new TextBlock { Text = "Cor", FontSize = 12 });
+        var color = new ColorView
+        {
+            Name = "LayerColorPicker", Color = Color.Parse(layer?.Color ?? "#009CA6"),
+            ColorSpectrumShape = ColorSpectrumShape.Ring, ColorSpectrumComponents = ColorSpectrumComponents.HueSaturation,
+            IsAlphaEnabled = false, IsAlphaVisible = false, IsColorPaletteVisible = false,
+            IsColorModelVisible = false, IsColorComponentsVisible = false, IsHexInputVisible = false, IsAccentColorsVisible = false
+        };
+        panel.Children.Add(color);
+        panel.Children.Add(new TextBlock { Text = "Escolha na roda; ajuste o brilho na barra.", FontSize = 12 });
         var window = Window("Camada", panel);
         AddSubmit(panel, window, () =>
         {
-            if (layer is null) model.Editor.AddLayer(name.Text ?? "", color.Text ?? "");
-            else model.Editor.UpdateLayer(layer with { Name = name.Text ?? "", Color = color.Text ?? "" });
+            var selected = color.Color; var hex = $"#{selected.R:X2}{selected.G:X2}{selected.B:X2}";
+            if (layer is null) model.Editor.AddLayer(name.Text ?? "", hex);
+            else model.Editor.UpdateLayer(layer with { Name = name.Text ?? "", Color = hex });
             return Task.CompletedTask;
         });
         if (layer is not null) AddLayerDeletion(panel, window, model, layer);
