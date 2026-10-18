@@ -64,18 +64,7 @@ public sealed class MainWindow : Window
         var header = new StackPanel(); DockPanel.SetDock(header, Dock.Top);
         header.Children.Add(BuildMenu()); header.Children.Add(BuildToolbar()); root.Children.Add(header);
         DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
-        var sidebar = new StackPanel { Spacing = 14, Margin = new Thickness(12) };
-        sidebar.Children.Add(Heading("Projeto"));
-        sidebar.Children.Add(BuildLayersHeading()); sidebar.Children.Add(layers);
-        sidebar.Children.Add(Heading("Propriedades")); sidebar.Children.Add(properties);
-        var left = new Border
-        {
-            Width = 285,
-            BorderBrush = Brush.Parse("#DCE5EF"),
-            BorderThickness = new Thickness(0, 0, 1, 0),
-            Background = Brushes.White,
-            Child = new ScrollViewer { Content = sidebar }
-        };
+        var left = BuildSidebar();
         DockPanel.SetDock(left, Dock.Left); root.Children.Add(left);
         var tabs = new TabControl();
         tabs.Items.Add(new TabItem { Header = "Plano cartesiano", Content = canvas });
@@ -83,6 +72,27 @@ public sealed class MainWindow : Window
         tabs.SelectionChanged += (_, _) => { layers.CancelDrag(); model.EndTemporaryMove(); canvas.CancelDraft(); }; root.Children.Add(tabs);
         var overlay = new Grid(); overlay.Children.Add(root); overlay.Children.Add(dragOverlay);
         return overlay;
+    }
+    private Control BuildSidebar()
+    {
+        var sidebar = new Grid { Name = "Sidebar", RowDefinitions = new RowDefinitions("*,280") };
+        var layerSection = new StackPanel { Spacing = 14, Margin = new Thickness(12) };
+        layerSection.Children.Add(Heading("Projeto"));
+        layerSection.Children.Add(BuildLayersHeading()); layerSection.Children.Add(layers);
+        sidebar.Children.Add(new ScrollViewer { Name = "LayerScroll", Content = layerSection });
+        var propertyContent = new StackPanel { Spacing = 14, Margin = new Thickness(12) };
+        propertyContent.Children.Add(Heading("Propriedades")); propertyContent.Children.Add(properties);
+        var propertySection = new Border
+        {
+            Name = "PropertiesSection", BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = new ScrollViewer { Content = propertyContent }
+        };
+        propertySection.BorderBrush = Brush.Parse("#DCE5EF");
+        Grid.SetRow(propertySection, 1); sidebar.Children.Add(propertySection);
+        var border = new Border { Name = "SidebarBorder", Width = 285, BorderThickness = new Thickness(0, 0, 1, 0), Child = sidebar };
+        border.Background = Brushes.White;
+        border.BorderBrush = Brush.Parse("#DCE5EF");
+        return border;
     }
     private Control BuildLayersHeading()
     {
