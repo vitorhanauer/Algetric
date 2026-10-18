@@ -58,11 +58,18 @@ public class ObjectVisibilityTests
         Assert.Equal(other.Id, Assert.Single(shown.RootElement.GetProperty("objects").EnumerateArray()).GetProperty("id").GetGuid());
     }
 
-    [Fact]
-    public async Task VisibilityIsSavedAndLegacyObjectsDefaultToVisible()
+    [Theory]
+    [InlineData(ShapeKind.Point)]
+    [InlineData(ShapeKind.Segment)]
+    [InlineData(ShapeKind.Polyline)]
+    [InlineData(ShapeKind.Polygon)]
+    [InlineData(ShapeKind.CoveragePath)]
+    public async Task VisibilityIsSavedAndLegacyObjectsDefaultToVisible(ShapeKind kind)
     {
-        var editor = TestProjects.WithLayers(); var polygon = AddPolygon(editor);
-        editor.SetObjectVisibility(polygon.Id, false);
+        var editor = TestProjects.WithLayers();
+        LocalPoint[] vertices = [new(0, 0), new(100, 0), new(100, 100), new(0, 100)];
+        var shape = editor.Add(kind, kind == ShapeKind.Point ? vertices.Take(1) : kind == ShapeKind.Segment ? vertices.Take(2) : vertices);
+        editor.SetObjectVisibility(shape.Id, false);
         var path = Path.GetTempFileName(); var repository = new JsonProjectRepository();
         try
         {

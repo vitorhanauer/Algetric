@@ -56,6 +56,7 @@ public sealed partial class SmokeApplication : Application
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
         await VerifyLanguagesAsync(window, model);
         await VerifyPolygonVisibilityAsync(window, model);
+        await VerifyOtherObjectVisibilityAsync(window, model);
         await VerifyToolShortcutsAsync(window, model);
         await VerifyCoveragePathAsync(window, model);
         await VerifyPropertiesAsync(window, model);

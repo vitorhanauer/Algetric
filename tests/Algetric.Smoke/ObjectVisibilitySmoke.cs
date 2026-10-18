@@ -25,7 +25,7 @@ public sealed partial class SmokeApplication
         using (var state = JsonDocument.Parse(model.MapState()))
             CheckLayer(state.RootElement.GetProperty("objects").EnumerateArray().All(shape => shape.GetProperty("id").GetGuid() != polygon.Id),
                 "Hidden polygons must be removed from the map snapshot.");
-        VerifyHiddenPolygonCannotBePicked(window, model, canvas);
+        VerifyHiddenObjectCannotBePicked(window, model, canvas, new(50, 50));
         model.Editor.Undo(); CheckLayer(checkbox.IsChecked == true, "Undo must restore polygon visibility and its checkbox.");
         model.Editor.Redo(); CheckLayer(checkbox.IsChecked == false, "Redo must hide the polygon again.");
         checkbox.IsChecked = true;
@@ -34,18 +34,18 @@ public sealed partial class SmokeApplication
         Console.WriteLine("POLYGON VISIBILITY PASS: individual checkbox, rendering, hidden hit tests, map filtering and undo/redo.");
     }
 
-    private static void VerifyHiddenPolygonCannotBePicked(MainWindow window, EditorViewModel model, CartesianCanvas canvas)
+    private static void VerifyHiddenObjectCannotBePicked(MainWindow window, EditorViewModel model, CartesianCanvas canvas, LocalPoint point)
     {
-        var position = canvas.TranslatePoint(canvas.ToScreen(new(50, 50)), window)!.Value;
+        var position = canvas.TranslatePoint(canvas.ToScreen(point), window)!.Value;
         var pointer = new Avalonia.Input.Pointer(801, PointerType.Mouse, true);
         canvas.RaiseEvent(new PointerPressedEventArgs(canvas, pointer, window, position, 0,
             new PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 1));
         ReleaseLayerPointer(window, canvas, pointer, position);
-        CheckLayer(model.Editor.SelectedId is null, "Clicking a hidden polygon must not select it.");
+        CheckLayer(model.Editor.SelectedId is null, "Clicking a hidden object must not select it.");
         canvas.RaiseEvent(new PointerPressedEventArgs(canvas, pointer, window, position, 1,
             new PointerPointProperties(Avalonia.Input.RawInputModifiers.RightMouseButton, PointerUpdateKind.RightButtonPressed), KeyModifiers.None, 1));
         canvas.RaiseEvent(new PointerReleasedEventArgs(canvas, pointer, window, position, 2, new PointerPointProperties(), KeyModifiers.None, MouseButton.Right));
-        CheckLayer(canvas.ContextMenu is null, "Right-clicking a hidden polygon must not expose its canvas context menu.");
+        CheckLayer(canvas.ContextMenu is null, "Right-clicking a hidden object must not expose its canvas context menu.");
     }
 
     private static byte[] CaptureCanvas(CartesianCanvas canvas)
