@@ -11,11 +11,13 @@ public sealed class BoustrophedonPathGenerator : ICoveragePathGenerator
     public LocalPoint[] Generate(GeometryObject polygon, CoveragePathOptions options)
     {
         var area = Validate(polygon, options);
+        var obstructions = CoverageObstructions.Filter(area, options);
         if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture != Architecture.X64)
             throw new PlatformNotSupportedException("A geração de caminhos deste pacote está disponível apenas no Linux x64.");
         var interiorOptions = options with { Start = EntryPoint(area, options.Start), End = EntryPoint(area, options.End) };
-        var coverage = GenerateInterior(polygon, area, interiorOptions);
-        ValidateRoute(area, coverage);
+        var coverage = GenerateInterior(polygon, area, interiorOptions, obstructions);
+        var freeArea = obstructions.Aggregate(area, (free, obstruction) => free.Difference(GeometryRules.ToGeometry(obstruction)));
+        ValidateRoute(freeArea, coverage);
         var route = new List<LocalPoint>();
         AppendPoint(route, options.Start);
         foreach (var point in coverage) AppendPoint(route, point);
@@ -29,12 +31,13 @@ public sealed class BoustrophedonPathGenerator : ICoveragePathGenerator
         var nearest = NetTopologySuite.Operation.Distance.DistanceOp.NearestPoints(area.Boundary, point)[0];
         return new(nearest.X, nearest.Y);
     }
-    private static List<LocalPoint> GenerateInterior(GeometryObject polygon, Geometry area, CoveragePathOptions options)
+    private static List<LocalPoint> GenerateInterior(GeometryObject polygon, Geometry area, CoveragePathOptions options, GeometryObject[] obstructions)
     {
         var center = area.EnvelopeInternal.Centre;
         NativePoint Native(LocalPoint point) => new(point.X - center.X, point.Y - center.Y);
         var result = Boustrophedon.GenerateWaypoints(Native(options.Start), Native(options.End),
-            polygon.Vertices.Select(Native).ToArray(), [], options.Width, options.OverlapPercent);
+            polygon.Vertices.Select(Native).ToArray(), obstructions.Select(shape => shape.Vertices.Select(Native).ToArray()).ToArray(),
+            options.Width, options.OverlapPercent);
         var route = new List<LocalPoint>();
         foreach (var point in result)
         {
@@ -76,6 +79,6 @@ public sealed class BoustrophedonPathGenerator : ICoveragePathGenerator
         var line = new LineString(route.Select(point => new Coordinate(point.X, point.Y)).ToArray());
         var tolerance = Math.Max(1e-7, area.EnvelopeInternal.Diameter * 1e-9);
         if (!area.Buffer(tolerance).Covers(line))
-            throw new InvalidOperationException("O gerador retornou um trecho fora do polígono. Tente outra largura ou pontos de entrada e saída.");
+            throw new InvalidOperationException("O gerador retornou um trecho fora da área livre. Tente outra largura ou pontos de entrada e saída.");
     }
 }

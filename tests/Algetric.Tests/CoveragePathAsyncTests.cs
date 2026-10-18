@@ -32,6 +32,19 @@ public class CoveragePathAsyncTests
         Assert.Same(before, model.Editor.Document);
     }
     [Fact]
+    public async Task RemovingAnObstructionDiscardsThePendingGeneration()
+    {
+        using var generator = new PausedGenerator(); var model = new EditorViewModel(generator);
+        model.Load(TestProjects.WithLayers().Document);
+        var polygon = model.Editor.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
+        var obstruction = model.Editor.Add(ShapeKind.Polygon, [new(20, 20), new(30, 20), new(30, 30), new(20, 30)]);
+        var generating = model.GenerateCoveragePathAsync(polygon.Id, new(new(0, 0), new(100, 100), 5, 0, [obstruction]));
+        await generator.Started.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        model.Editor.Select(obstruction.Id); model.Editor.DeleteSelected(); generator.Release.Set();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => generating);
+        Assert.DoesNotContain(model.Editor.Document.Objects, shape => shape.Kind == ShapeKind.CoveragePath);
+    }
+    [Fact]
     public async Task LoadingAnotherProjectDiscardsThePendingGeneration()
     {
         using var generator = new PausedGenerator(); var model = new EditorViewModel(generator);
