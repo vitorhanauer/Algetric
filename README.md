@@ -24,7 +24,7 @@ From this repository, install for your current user with:
 bash scripts/install-linux.sh
 ```
 
-This uses the published application in `artifacts/linux-x64`, building it first if it is missing. Building requires the source prerequisites below. To install an extracted Linux package instead, run this inside its directory:
+This always builds the current source and then installs or updates the application, even if an older package already exists in `artifacts/linux-x64`. Building requires the source prerequisites below. To install an extracted Linux package instead, run this inside its directory:
 
 ```sh
 bash install.sh
@@ -38,14 +38,13 @@ Run the installer without `sudo`. It copies the application into your user data 
 
 If `~/.local/bin` is already on your `PATH`, `algetric` works directly. The menu shortcut works independently of `PATH`. Installation copies all runtime and web assets, so the repository or extracted package can subsequently be moved or removed.
 
-Close Algetric before updating. From the repository, build the latest code and reinstall:
+Close Algetric before updating. Update your checkout to the desired revision, then rerun the same command; it rebuilds and replaces an existing managed installation automatically:
 
 ```sh
-bash scripts/publish-linux.sh
 bash scripts/install-linux.sh
 ```
 
-From an updated extracted package, rerun `bash install.sh`. To uninstall from the repository:
+From an updated extracted package, rerun `bash install.sh`; this uses the bundled version without requiring build tools. Installers use the current checkout or supplied package, rather than searching online for releases. Updates preserve projects, settings, credentials, and downloaded maps. To uninstall from the repository:
 
 ```sh
 bash scripts/uninstall-linux.sh
@@ -77,9 +76,17 @@ To create a desktop shortcut as well:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DesktopShortcut
 ```
 
-The installer copies files to `%LOCALAPPDATA%\Programs\Algetric`, adds a Start menu shortcut, and registers Algetric in Windows **Installed apps / Apps & features**. Once installation succeeds, the extracted package can be removed. Close Algetric before updating, then run `install.cmd` from the newer package.
+The installer copies files to `%LOCALAPPDATA%\Programs\Algetric`, adds a Start menu shortcut, and registers Algetric in Windows **Installed apps / Apps & features**. Once installation succeeds, the extracted package can be removed. Close Algetric before updating, then run `install.cmd` from the newer package. The installer detects the registered installation, reuses its directory (including a custom `-InstallDirectory`), replaces application files, and preserves existing shortcuts and user data.
 
 Uninstall through Windows Settings or double-click `uninstall.cmd` in the installed application directory. Projects, settings, encrypted credentials, and downloaded maps in `%LOCALAPPDATA%\algetric` are preserved. Provider tokens are encrypted with Windows DPAPI for the current user; copying the encrypted files to another Windows account does not transfer access.
+
+To install or update from the repository on Windows, use the source prerequisites below and run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
+```
+
+This always publishes the current checkout before installing, even when `artifacts/win-x64` already exists. If publishing fails, the installed application is left untouched. No separate publish command is needed for this workflow.
 
 ### Build the Windows package
 
@@ -87,7 +94,6 @@ On Windows x64, install the SDK specified in `global.json`, Node.js 24, Git, CMa
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-windows.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
 ```
 
 The publish script builds PROJ through a pinned vcpkg manifest, runs the tests, and creates `artifacts/algetric-win-x64.zip` with its SHA-256 checksum. Native builds use a static C runtime and dynamic PROJ/SQLite libraries, which are copied into the package together with `proj.db` and license files. No separate PROJ or .NET installation is needed on the target computer.

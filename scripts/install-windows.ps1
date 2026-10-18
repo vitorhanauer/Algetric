@@ -1,19 +1,14 @@
 [CmdletBinding()]
 param(
-    [string]$InstallDirectory = (Join-Path $env:LOCALAPPDATA 'Programs/Algetric'),
+    [string]$InstallDirectory,
     [switch]$DesktopShortcut
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) { throw 'Algetric requires Windows x64.' }
 . (Join-Path $PSScriptRoot 'windows-common.ps1')
-$package = $PSScriptRoot
-if (-not (Test-Path -LiteralPath (Join-Path $package 'Algetric.Desktop.exe'))) {
-    $package = Join-Path (Split-Path $PSScriptRoot -Parent) 'artifacts/win-x64'
-    if (-not (Test-Path -LiteralPath (Join-Path $package 'install.ps1'))) {
-        & (Join-Path $PSScriptRoot 'publish-windows.ps1')
-    }
-}
+$InstallDirectory = Get-AlgetricInstallDirectory $InstallDirectory
+$package = Get-AlgetricPackageDirectory $PSScriptRoot
 foreach ($file in @('Algetric.Desktop.exe', 'Web/vendor/Cesium/Cesium.js', 'proj-data/proj.db', 'uninstall.ps1', 'windows-common.ps1')) {
     if (-not (Test-Path -LiteralPath (Join-Path $package $file))) { throw "Incomplete application package: $file" }
 }
@@ -23,6 +18,7 @@ if (-not (Test-AlgetricWebView2)) {
 }
 if (Get-Process -Name 'Algetric.Desktop' -ErrorAction SilentlyContinue) { throw 'Close Algetric before installing or updating.' }
 $InstallDirectory = [IO.Path]::GetFullPath($InstallDirectory)
+$installationAction = if (Test-AlgetricManaged $InstallDirectory) { 'updated' } else { 'installed' }
 if ((Test-Path -LiteralPath $InstallDirectory) -and -not (Test-AlgetricManaged $InstallDirectory)) {
     throw "Refusing to replace an unmanaged directory: $InstallDirectory"
 }
@@ -39,7 +35,10 @@ try {
     $executable = Join-Path $InstallDirectory 'Algetric.Desktop.exe'
     $shell = New-Object -ComObject WScript.Shell
     $links = @((Get-AlgetricShortcut))
-    if ($DesktopShortcut) { $links += Join-Path ([Environment]::GetFolderPath('Desktop', 'DoNotVerify')) 'Algetric.lnk' }
+    $desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop', 'DoNotVerify')) 'Algetric.lnk'
+    if ($DesktopShortcut -or ((Test-Path -LiteralPath $desktopLink) -and $shell.CreateShortcut($desktopLink).TargetPath -eq $executable)) {
+        $links += $desktopLink
+    }
     foreach ($link in $links) {
         New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
         $shortcut = $shell.CreateShortcut($link)
@@ -65,4 +64,4 @@ try {
     }
     throw
 } finally { if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force } }
-Write-Host 'Algetric installed. Open Algetric from the Start menu. No administrator privileges are required.'
+Write-Host "Algetric $installationAction. Open Algetric from the Start menu. No administrator privileges are required."

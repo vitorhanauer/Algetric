@@ -11,6 +11,8 @@ $installed = Join-Path $temporary 'application with spaces'
 $userData = Join-Path $env:LOCALAPPDATA 'algetric'
 New-Item -ItemType Directory -Path $userData -Force | Out-Null
 $sentinel = Join-Path $userData ('installer-test-' + [Guid]::NewGuid().ToString('N') + '.txt')
+$updateMarker = 'installer-update-' + [Guid]::NewGuid().ToString('N') + '.txt'
+$updateSource = Join-Path $PackageDirectory $updateMarker
 [IO.File]::WriteAllText($sentinel, 'keep user data')
 try {
     & (Join-Path $PackageDirectory 'install.ps1') -InstallDirectory $installed -DesktopShortcut
@@ -21,7 +23,15 @@ try {
     Assert-True ((Get-ItemProperty -LiteralPath $script:AlgetricRegistry).InstallLocation -eq $installed) 'Missing Apps registration.'
     $process = Start-Process -FilePath (Join-Path $installed 'Algetric.Desktop.exe') -ArgumentList '--diagnostics' -Wait -PassThru
     Assert-True ($process.ExitCode -eq 0) 'Installed application diagnostics failed.'
-    & (Join-Path $PackageDirectory 'install.ps1') -InstallDirectory $installed
+    [IO.File]::WriteAllText($updateSource, 'updated package')
+    [IO.File]::WriteAllText((Join-Path $installed 'obsolete-test.txt'), 'old package')
+    & (Join-Path $PackageDirectory 'install.ps1')
+    Assert-True ((Get-ItemProperty -LiteralPath $script:AlgetricRegistry).InstallLocation -eq $installed) 'Upgrade did not discover the registered custom directory.'
+    Assert-True ((Get-Content -LiteralPath (Join-Path $installed $updateMarker) -Raw) -eq 'updated package') 'Upgrade did not copy the new package.'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $installed 'obsolete-test.txt'))) 'Upgrade retained obsolete application files.'
+    Assert-True ((Get-Content -LiteralPath $sentinel -Raw) -eq 'keep user data') 'Upgrade removed user data.'
+    $desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop', 'DoNotVerify')) 'Algetric.lnk'
+    Assert-True ($shell.CreateShortcut($desktopLink).TargetPath -eq (Join-Path $installed 'Algetric.Desktop.exe')) 'Upgrade did not preserve the desktop shortcut.'
     & (Join-Path $installed 'uninstall.ps1')
     Assert-True (-not (Test-Path -LiteralPath $installed)) 'Application files remain after uninstall.'
     Assert-True (-not (Test-Path -LiteralPath (Get-AlgetricShortcut))) 'Start menu shortcut remains after uninstall.'
@@ -35,6 +45,7 @@ try {
     Assert-True $failed 'Installer must refuse an unmanaged directory.'
     Write-Host 'PASS: install, Start menu and desktop shortcuts, Apps registration, diagnostics, upgrade, uninstall, preserved user data, and unmanaged-directory rejection.'
 } finally {
+    if (Test-Path -LiteralPath $updateSource) { Remove-Item -LiteralPath $updateSource }
     if (Test-AlgetricManaged $installed) { & (Join-Path $installed 'uninstall.ps1') }
     if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Recurse -Force }
     if (Test-Path -LiteralPath $sentinel) { Remove-Item -LiteralPath $sentinel }

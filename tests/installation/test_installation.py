@@ -73,6 +73,46 @@ class InstallationTests(unittest.TestCase):
         self.assertFalse((self.data / 'applications/algetric.desktop').exists())
         self.run_script('uninstall.sh')
 
+    def source_installer(self, publish_body):
+        source = self.root / 'source'
+        scripts = source / 'scripts'
+        scripts.mkdir(parents=True)
+        for name in ('install-linux.sh', 'linux-common.sh'):
+            shutil.copyfile(REPOSITORY / 'scripts' / name, scripts / name)
+        shutil.copytree(self.bundle, source / 'artifacts/linux-x64')
+        (scripts / 'package-linux.sh').write_text('#!/usr/bin/env bash\nexit 0\n')
+        (scripts / 'publish-linux.sh').write_text('#!/usr/bin/env bash\nset -euo pipefail\n' + publish_body)
+        return ['bash', str(scripts / 'install-linux.sh')]
+
+    def test_source_install_rebuilds_existing_package_and_updates_installed_binary(self):
+        self.run_script('install.sh')
+        cache = self.data / 'algetric/maps.sqlite'
+        cache.write_text('preserved cache')
+        invocation = self.source_installer('''
+printf 'published\\n' >> "$PUBLISH_LOG"
+cp -a -- "$LATEST_PACKAGE/." "$(dirname "$0")/../artifacts/linux-x64/"
+''')
+        latest = self.bundle / 'Algetric.Desktop'
+        latest.write_text('#!/bin/sh\nprintf "latest version\\n"\n')
+        environment = dict(self.environment, LATEST_PACKAGE=str(self.bundle), PUBLISH_LOG=str(self.root / 'publish.log'))
+        for _ in range(2):
+            result = subprocess.run(invocation, env=environment, text=True, capture_output=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('Updated Algetric', result.stdout)
+            installed = self.data / 'algetric/application/Algetric.Desktop'
+            self.assertEqual(latest.read_bytes(), installed.read_bytes())
+        self.assertEqual(['published', 'published'], (self.root / 'publish.log').read_text().splitlines())
+        self.assertEqual('preserved cache', cache.read_text())
+
+    def test_failed_source_publish_preserves_installed_application(self):
+        self.run_script('install.sh')
+        installed = self.data / 'algetric/application/Algetric.Desktop'
+        previous = installed.read_bytes()
+        invocation = self.source_installer('exit 42\n')
+        result = subprocess.run(invocation, env=self.environment, text=True, capture_output=True)
+        self.assertEqual(42, result.returncode)
+        self.assertEqual(previous, installed.read_bytes())
+
     def test_refuses_to_replace_an_unrelated_launcher(self):
         self.bin.mkdir()
         launcher = self.bin / 'algetric'

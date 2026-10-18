@@ -54,7 +54,9 @@ jobs:
           cache-dependency-path: src/Algetric.Desktop/Web/package-lock.json
       - name: Test Windows package scripts
         shell: pwsh
-        run: ./tests/windows/Packaging.Tests.ps1
+        run: |
+          ./tests/windows/Packaging.Tests.ps1
+          ./tests/windows/Update.Tests.ps1
       - name: Build pinned PROJ dependencies
         shell: pwsh
         run: |

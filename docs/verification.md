@@ -14,7 +14,7 @@ Run `dotnet run --project tests/Algetric.Smoke -- --properties-only` in a graphi
 
 ## Desktop installation tests
 
-Run `python3 -m unittest discover -s tests/installation -v`. Tests install a simulated package into temporary user directories, validate the desktop entry, and launch it through `gio` when available. They cover paths with spaces and special characters, independence from the original package directory, upgrades, uninstalling without deleting user data, missing assets, and refusing to overwrite unrelated launchers. The suite contains five tests, including first-run source setup and argument forwarding. Python is needed for these tests only; installation itself uses Bash and standard Linux utilities. The real published package was also installed into temporary user directories, checked with `desktop-file-validate` and `--diagnostics`, and uninstalled while preserving user data.
+Run `python3 -m unittest discover -s tests/installation -v`. Tests install a simulated package into temporary user directories, validate the desktop entry, and launch it through `gio` when available. They cover paths with spaces and special characters, independence from the original package directory, upgrades, uninstalling without deleting user data, missing assets, and refusing to overwrite unrelated launchers. The suite contains seven tests, including first-run source setup, argument forwarding, rebuilding an existing source package on each install, replacing an older installed binary, and preserving the installation after a failed publish. Python is needed for these tests only; installation itself uses Bash and standard Linux utilities. The real published package was also installed into temporary user directories, checked with `desktop-file-validate` and `--diagnostics`, and uninstalled while preserving user data.
 
 ## Reproduce in an isolated Ubuntu environment
 
@@ -44,9 +44,11 @@ All 26 .NET tests and 2 JavaScript tests passed. The publishing script completed
 
 ## Windows verification
 
+Run `pwsh -File tests/windows/Update.Tests.ps1` on any host with PowerShell to verify that source installations always republish, extracted packages need no build, failed publishing stops installation, and registered custom installation directories are reused unless explicitly overridden. These checks use temporary fixtures and a simulated registration.
+
 Run `pwsh -File tests/windows/Packaging.Tests.ps1` on any host with PowerShell to validate script syntax, ZIP contents, native dependencies and license notices, checksums, and rejection of a missing coordinate database. The package tests use controlled native fixtures; they do not execute Windows binaries.
 
-On a Windows machine with WebView2, build with `scripts/publish-windows.ps1`, then run `tests/windows/Installation.Tests.ps1`. It verifies Start menu shortcuts, Installed apps registration, installed-binary diagnostics, upgrades, uninstall, user data preservation, and rejection of unrelated directories. It requires a profile without an existing Algetric installation. The Windows-only .NET test verifies DPAPI round trips, absence of plaintext tokens, and corrupted credential rejection.
+On a Windows machine with WebView2, build with `scripts/publish-windows.ps1`, then run `tests/windows/Installation.Tests.ps1`. It verifies Start menu shortcuts, Installed apps registration, installed-binary diagnostics, discovery and upgrade of a custom installation without repeating its directory, copying new package files and removing obsolete files, preservation of desktop shortcuts and user data, uninstall, and rejection of unrelated directories. It requires a profile without an existing Algetric installation. The Windows-only .NET test verifies DPAPI round trips, absence of plaintext tokens, and corrupted credential rejection.
 
 The Windows CI job builds pinned native dependencies, runs these checks, and exercises the WebView2 smoke test. Its software-rendering browser flags apply only to the CI smoke process. Native Windows installation, DPAPI, and WebView2 execution cannot be validated from the Linux development host; the Windows runner must confirm them before release.
 

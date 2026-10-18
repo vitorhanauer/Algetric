@@ -24,3 +24,17 @@ function Test-AlgetricManaged([string]$Directory) {
 function Get-AlgetricShortcut {
     return Join-Path ([Environment]::GetFolderPath('Programs', 'DoNotVerify')) 'Algetric.lnk'
 }
+
+function Get-AlgetricInstallDirectory([string]$RequestedDirectory) {
+    if ($RequestedDirectory) { return $RequestedDirectory }
+    $registration = Get-ItemProperty -LiteralPath $script:AlgetricRegistry -Name InstallLocation -ErrorAction SilentlyContinue
+    if ($null -ne $registration -and $registration.InstallLocation) { return $registration.InstallLocation }
+    return Join-Path $env:LOCALAPPDATA 'Programs/Algetric'
+}
+
+function Get-AlgetricPackageDirectory([string]$ScriptDirectory) {
+    if (Test-Path -LiteralPath (Join-Path $ScriptDirectory 'Algetric.Desktop.exe')) { return $ScriptDirectory }
+    Write-Host 'Building Algetric from the current source before installation.'
+    & (Join-Path $ScriptDirectory 'publish-windows.ps1') | Out-Host
+    return Join-Path (Split-Path $ScriptDirectory -Parent) 'artifacts/win-x64'
+}

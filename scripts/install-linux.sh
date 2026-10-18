@@ -6,11 +6,8 @@ source "$script_directory/linux-common.sh"
 package_directory="$script_directory"
 if [[ ! -f "$package_directory/Algetric.Desktop" ]]; then
   package_directory="$script_directory/../artifacts/linux-x64"
-  if [[ ! -x "$package_directory/Algetric.Desktop" ]]; then
-    bash "$script_directory/publish-linux.sh"
-  else
-    bash "$script_directory/package-linux.sh"
-  fi
+  printf 'Building Algetric from the current source before installation.\n'
+  bash "$script_directory/publish-linux.sh"
 fi
 package_directory="$(cd -- "$package_directory" && pwd)"
 for required in Algetric.Desktop Web/vendor/Cesium/Cesium.js algetric.svg uninstall.sh linux-common.sh; do
@@ -40,6 +37,7 @@ fi
 mkdir -p -- "$(dirname "$algetric_app")" "$algetric_bin_root" "$(dirname "$algetric_desktop")" "$(dirname "$algetric_icon")"
 stage="$(mktemp -d "$(dirname "$algetric_app")/.application-stage.XXXXXX")"
 backup=''
+installation_action='Installed'
 cleanup() {
   [[ ! -d "$stage" ]] || rm -rf -- "$stage"
   if [[ -n "$backup" && -d "$backup" && ! -e "$algetric_app" ]]; then
@@ -50,6 +48,7 @@ trap cleanup EXIT
 cp -a -- "$package_directory/." "$stage/"
 printf 'algetric-user-install-v1\n' > "$stage/.algetric-install"
 if [[ -d "$algetric_app" ]]; then
+  installation_action='Updated'
   backup="${stage}.previous"
   mv -- "$algetric_app" "$backup"
 fi
@@ -72,4 +71,4 @@ install -m 644 -- "$algetric_app/algetric.svg" "$algetric_icon"
 chmod 644 "$algetric_desktop"
 if [[ -n "$backup" ]]; then rm -rf -- "$backup"; fi
 algetric_refresh_menu
-printf 'Installed Algetric. Open it from your applications menu or run:\n  %s\n' "$algetric_launcher"
+printf '%s Algetric. Open it from your applications menu or run:\n  %s\n' "$installation_action" "$algetric_launcher"
