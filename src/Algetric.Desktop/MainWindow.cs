@@ -113,16 +113,29 @@ public sealed class MainWindow : Window
     private Control BuildToolbar()
     {
         var panel = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8) };
-        foreach (var (label, tool) in new[]{("↖ Selecionar",EditorTool.Select),("✥ Mover",EditorTool.Move),("• Ponto",EditorTool.Point),
-            ("╱ Segmento",EditorTool.Segment),("⌁ Linha",EditorTool.Polyline),("⬡ Polígono",EditorTool.Polygon)})
+        foreach (var (icon, label, tool) in new[]{("↖","Selecionar",EditorTool.Select),("✥","Mover",EditorTool.Move),("•","Ponto",EditorTool.Point),
+            ("╱","Segmento",EditorTool.Segment),("⌁","Linha",EditorTool.Polyline),("⬡","Polígono",EditorTool.Polygon)})
         {
-            var button = Button(label, () => { canvas.CancelDraft(); model.SetTool(tool); return Task.CompletedTask; });
+            var button = ToolbarButton(icon, label, () => { canvas.CancelDraft(); model.SetTool(tool); return Task.CompletedTask; });
             if (tool == EditorTool.Move) ToolTip.SetTip(button, "Mover o plano • segure Espaço para ativar temporariamente");
             tools.Add((button, tool)); panel.Children.Add(button);
         }
-        panel.Children.Add(Button("✓ Concluir", () => { canvas.FinishDraft(); _ = map.InvokeScript("window.algetric?.finish()"); return Task.CompletedTask; }));
-        panel.Children.Add(Button("↶ Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }));
-        panel.Children.Add(Button("↷ Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; })); return panel;
+        panel.Children.Add(ToolbarButton("✓", "Concluir", () => { canvas.FinishDraft(); _ = map.InvokeScript("window.algetric?.finish()"); return Task.CompletedTask; }));
+        panel.Children.Add(ToolbarButton("↶", "Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }));
+        panel.Children.Add(ToolbarButton("↷", "Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; })); return panel;
+    }
+    private Button ToolbarButton(string icon, string label, Func<Task> action)
+    {
+        var button = Button(icon, action);
+        button.Width = 40; button.Height = 40;
+        button.FontSize = 28;
+        button.Padding = new Thickness(0);
+        button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        button.VerticalContentAlignment = VerticalAlignment.Center;
+        button.Background = Brushes.Transparent;
+        ToolTip.SetTip(button, label);
+        Avalonia.Automation.AutomationProperties.SetName(button, label);
+        return button;
     }
     private void Refresh()
     {

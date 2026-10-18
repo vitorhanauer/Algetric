@@ -145,7 +145,7 @@ public sealed partial class SmokeApplication : Application
     private static void VerifyNavigation(MainWindow window, EditorViewModel model)
     {
         var canvas = Field<CartesianCanvas>(window, "canvas");
-        var move = window.GetVisualDescendants().OfType<Button>().SingleOrDefault(button => button.Content is string text && text.Contains("Mover"));
+        var move = window.GetVisualDescendants().OfType<Button>().SingleOrDefault(button => Avalonia.Automation.AutomationProperties.GetName(button) == "Mover");
         if (move is null) throw new InvalidOperationException("Missing Move toolbar button.");
         var original = model.Editor.Document;
         move.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
