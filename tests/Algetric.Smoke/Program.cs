@@ -23,7 +23,7 @@ public sealed partial class SmokeApplication : Application
     public override void Initialize() { Styles.Add(new FluentTheme());
         Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://Avalonia.Controls.ColorPicker/"))
         { Source = new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml") });
-        RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light; }
+        RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default; }
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

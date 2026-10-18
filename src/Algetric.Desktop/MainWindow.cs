@@ -100,9 +100,10 @@ public sealed class MainWindow : Window
     private MenuItem BuildAppearanceMenu()
     {
         var appearance = new MenuItem { Header = "Aparência" };
+        var system = Item("Seguir o sistema", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Default)); system.Name = "SystemTheme";
         var light = Item("Tema claro", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Light)); light.Name = "LightTheme";
         var dark = Item("Tema escuro", () => SetThemeAsync(Avalonia.Styling.ThemeVariant.Dark)); dark.Name = "DarkTheme";
-        appearance.Items.Add(light); appearance.Items.Add(dark);
+        appearance.Items.Add(system); appearance.Items.Add(light); appearance.Items.Add(dark);
         return appearance;
     }
     private Task SetThemeAsync(Avalonia.Styling.ThemeVariant theme)

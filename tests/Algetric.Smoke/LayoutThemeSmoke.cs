@@ -30,6 +30,9 @@ public sealed partial class SmokeApplication
     }
     private static async Task VerifyThemesAsync(MainWindow window, EditorViewModel model)
     {
+        CheckLayer(Current!.RequestedThemeVariant == ThemeVariant.Default, "The application must follow the operating system theme by default.");
+        ThemeItem(window, "LightTheme").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        await Task.Delay(50);
         var sidebar = LayerControl<Border>(window, "SidebarBorder");
         var light = ((ISolidColorBrush)sidebar.Background!).Color;
         ThemeItem(window, "DarkTheme").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -45,6 +48,9 @@ public sealed partial class SmokeApplication
         CheckLayer(window.ActualThemeVariant == ThemeVariant.Light && ((ISolidColorBrush)sidebar.Background!).Color == light,
             "Light theme must restore the original surfaces.");
         SaveThemeScreenshot(window, "light");
+        ThemeItem(window, "SystemTheme").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        await Task.Delay(50);
+        CheckLayer(Current!.RequestedThemeVariant == ThemeVariant.Default, "The user must be able to return to the system theme.");
         Console.WriteLine("THEME PASS: dark/light switching, surfaces and dialogs.");
     }
     private static MenuItem ThemeItem(MainWindow window, string name)

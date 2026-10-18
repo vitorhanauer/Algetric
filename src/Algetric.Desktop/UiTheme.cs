@@ -13,6 +13,7 @@ internal static class UiTheme
         if (app.Resources.ContainsKey("AlgetricThemeInstalled")) return;
         app.Resources["AlgetricThemeInstalled"] = true;
         var resources = new ResourceDictionary();
+        resources.ThemeDictionaries[ThemeVariant.Default] = Palette(false);
         resources.ThemeDictionaries[ThemeVariant.Light] = Palette(false);
         resources.ThemeDictionaries[ThemeVariant.Dark] = Palette(true);
         app.Resources.MergedDictionaries.Add(resources);
