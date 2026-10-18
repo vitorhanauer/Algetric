@@ -52,7 +52,21 @@ internal static class Dialogs
             if (layer is null) model.Editor.AddLayer(name.Text ?? "", color.Text ?? "");
             else model.Editor.UpdateLayer(layer with { Name = name.Text ?? "", Color = color.Text ?? "" });
             return Task.CompletedTask;
-        }); await window.ShowDialog(owner);
+        });
+        if (layer is not null) AddLayerDeletion(panel, window, model, layer);
+        await window.ShowDialog(owner);
+    }
+    private static void AddLayerDeletion(StackPanel panel, Window window, EditorViewModel model, Layer layer)
+    {
+        var delete = new Button { Name = "DeleteLayer", Content = "Excluir camada", Foreground = Brushes.DarkRed };
+        delete.Click += async (_, _) =>
+        {
+            var count = model.Editor.Document.Objects.Count(shape => shape.LayerId == layer.Id);
+            if (count > 0 && await Choose(window, "Excluir camada",
+                $"Excluir a camada \"{layer.Name}\" e seus {count} objeto(s)?\nVocê pode desfazer esta ação.", ["Excluir", "Cancelar"]) != "Excluir") return;
+            model.Editor.DeleteLayer(layer.Id); window.Close();
+        };
+        panel.Children.Add(delete);
     }
     public static async Task<bool> EditProvider(Window owner, ProviderSettings settings, TileProvider? provider)
     {

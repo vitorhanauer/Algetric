@@ -52,6 +52,7 @@ public sealed partial class SmokeApplication : Application
         await VerifyPropertiesAsync(window, model);
         VerifyNavigation(window, model);
         await VerifyLayerPanelAsync(window, model);
+        await VerifyLayerDeletionAsync(window, model);
         model.Editor.MarkSaved();
         await Task.Delay(1000);
         Directory.CreateDirectory("artifacts/smoke");

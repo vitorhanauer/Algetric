@@ -18,6 +18,8 @@ Run `dotnet run --project tests/Algetric.Smoke -- --properties-only` in a graphi
 
 The editor smoke scenario checks the **+** button in the layer heading, indented object rows, active-layer selection, and creation in that layer. It simulates pointer press/movement/release to verify that a dragged row disappears immediately, a floating preview follows the pointer, dropping on another layer moves the object, and undo/redo preserves its identity and selection. Dropping outside the layer list or onto the original layer leaves the document and history untouched. Escape and loss of pointer capture cancel the drag. The drag preview is rendered to `artifacts/smoke/layer-drag.png` for inspection.
 
+The layer dialog smoke check confirms that deleting a populated layer asks for confirmation, cancellation preserves the project, and deletion plus its objects can be undone in one step. Domain tests cover deleting the last layer, preserving unrelated selection and the active layer, and ignoring already-deleted layer identifiers.
+
 Domain tests also reject nonexistent objects/layers, avoid history entries for unchanged destinations, and verify that selecting an active layer does not mark the project modified.
 
 ## Desktop installation tests

@@ -72,6 +72,15 @@ public sealed class ProjectEditor
         var layer = new Layer(Guid.NewGuid(), name, color);
         Commit(Document with { Layers = Document.Layers.Add(layer) }, layer.Id);
     }
+    public void DeleteLayer(Guid layerId)
+    {
+        if (!Document.Layers.Any(layer => layer.Id == layerId)) return;
+        var layers = Document.Layers.RemoveAll(layer => layer.Id == layerId);
+        var objects = Document.Objects.RemoveAll(shape => shape.LayerId == layerId);
+        if (!objects.Any(shape => shape.Id == SelectedId)) SelectedId = null;
+        if (ActiveLayerId == layerId) ActiveLayerId = layers.FirstOrDefault()?.Id;
+        Commit(Document with { Layers = layers, Objects = objects });
+    }
     public void MoveObjectToLayer(Guid objectId, Guid layerId)
     {
         var index = Document.Objects.FindIndex(shape => shape.Id == objectId);

@@ -41,4 +41,38 @@ public class LayerEditingTests
         Assert.Throws<ArgumentException>(() => editor.SetActiveLayer(Guid.NewGuid()));
         Assert.Equal(target, editor.ActiveLayerId);
     }
+    [Fact]
+    public void DeletingALayerRemovesItsObjectsAndUndoRestoresTheirStylesAndGeometry()
+    {
+        var editor = TestProjects.WithLayers(); var layer = editor.Document.Layers[0];
+        var removed = editor.Add(ShapeKind.Point, [new(10, 20)]);
+        editor.SetActiveLayer(editor.Document.Layers[1].Id);
+        var kept = editor.Add(ShapeKind.Point, [new(30, 40)]);
+        editor.SetActiveLayer(layer.Id); editor.Select(removed.Id);
+        editor.DeleteLayer(layer.Id);
+        Assert.Equal(kept, Assert.Single(editor.Document.Objects));
+        Assert.Equal(kept.LayerId, editor.ActiveLayerId); Assert.Null(editor.SelectedId);
+        editor.Undo();
+        Assert.Equal(layer, editor.Document.Layers[0]);
+        Assert.Equal(new[] { removed, kept }, editor.Document.Objects.ToArray());
+        editor.Redo(); Assert.Equal(kept, Assert.Single(editor.Document.Objects));
+    }
+    [Fact]
+    public void DeletingTheLastLayerReturnsToEmptyAndDeletingMissingLayersIsANoOp()
+    {
+        var editor = new ProjectEditor(); editor.AddLayer("Only layer", "#112233");
+        var layer = Assert.Single(editor.Document.Layers);
+        editor.DeleteLayer(layer.Id);
+        Assert.Empty(editor.Document.Layers); Assert.Null(editor.ActiveLayerId);
+        var before = editor.Document; editor.DeleteLayer(layer.Id); Assert.Same(before, editor.Document);
+        editor.Undo(); Assert.Equal(layer, Assert.Single(editor.Document.Layers));
+    }
+    [Fact]
+    public void DeletingAnotherLayerKeepsTheActiveLayerAndUnrelatedSelection()
+    {
+        var editor = TestProjects.WithLayers();
+        var shape = editor.Add(ShapeKind.Point, [new(0, 0)]);
+        editor.DeleteLayer(editor.Document.Layers[1].Id);
+        Assert.Equal(shape.LayerId, editor.ActiveLayerId); Assert.Equal(shape.Id, editor.SelectedId);
+    }
 }
