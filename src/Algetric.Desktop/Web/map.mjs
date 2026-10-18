@@ -24,7 +24,7 @@ function sync(next){
   if(!acceptState(state,next))return;
   const reset=!state || next.session!==state.session;
   if(reset){clearAreaSelection();sequence=Date.now()*1000;draft=[];drag=null;viewer.scene.completeMorph();viewer.scene.morphTo3D(0);mode='3D';morphing=false;}
-  if(state?.tool!==next.tool){draft=[];clearAreaSelection();}
+  if(state?.tool!==next.tool){draft=[];closePolygonMenu();clearAreaSelection();}
   state=next;
   viewer.scene.screenSpaceCameraController.enableRotate=next.tool!==0;
   viewer.scene.screenSpaceCameraController.enableTranslate=next.tool!==0;
@@ -72,7 +72,7 @@ async function finish(){
   const before=state.revision;const next=await send('create',{vertices:draft});
   if(next && next.revision>before){draft=[];render();}
 }
-function cancel(){clearAreaSelection();draft=[];drag=null;viewer.scene.screenSpaceCameraController.enableInputs=true;render();}
+function cancel(){closePolygonMenu();clearAreaSelection();draft=[];drag=null;viewer.scene.screenSpaceCameraController.enableInputs=true;render();}
 function centerAndHeight(){
   const center=positionAt(new C.Cartesian2(viewer.canvas.clientWidth/2,viewer.canvas.clientHeight/2));
   return {...(center??{longitude:state.view.longitude,latitude:state.view.latitude}),height:viewer.camera.positionCartographic.height};
@@ -116,8 +116,24 @@ async function finishAreaSelection(position){
     });
   await send('selectMany',{ids});
 }
+function closePolygonMenu(){document.querySelector('#polygon-menu')?.remove();}
+function openPolygonMenu(event){
+  event.preventDefault();closePolygonMenu();if(!state||pending||morphing)return;
+  const bounds=viewer.canvas.getBoundingClientRect();
+  const picked=viewer.scene.drillPick(new C.Cartesian2(event.clientX-bounds.left,event.clientY-bounds.top));
+  const polygon=state.objects.find(object=>object.kind===3 && picked.some(hit=>hit.id?.id===object.id));
+  if(!polygon)return;
+  const menu=document.createElement('div');menu.id='polygon-menu';menu.setAttribute('role','menu');
+  menu.style.cssText=`position:fixed;z-index:10;left:${Math.max(8,Math.min(event.clientX,innerWidth-250))}px;top:${Math.max(8,Math.min(event.clientY,innerHeight-50))}px;padding:4px;background:white;border:1px solid #bccddd;border-radius:5px;box-shadow:0 4px 16px #0003`;
+  const button=document.createElement('button');button.textContent='Gerar caminho de pontos…';button.setAttribute('role','menuitem');
+  button.onclick=()=>{closePolygonMenu();void send('generatePath',{id:polygon.id});};
+  menu.addEventListener('keydown',key=>{key.stopPropagation();if(key.key==='Escape'){closePolygonMenu();key.preventDefault();}});
+  menu.append(button);document.body.append(menu);button.focus();
+}
 function wireEditing(){
   const handler=new C.ScreenSpaceEventHandler(viewer.canvas);
+  viewer.canvas.addEventListener('contextmenu',openPolygonMenu);
+  window.addEventListener('pointerdown',event=>{if(!event.target.closest('#polygon-menu'))closePolygonMenu();});
   viewer.screenSpaceEventHandler.removeInputAction(C.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
   handler.setInputAction(async event=>{
     if(pending||morphing||!state)return;

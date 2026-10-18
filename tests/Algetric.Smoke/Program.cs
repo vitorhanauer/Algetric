@@ -28,7 +28,7 @@ public sealed partial class SmokeApplication : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = new MainWindow(Path.GetFullPath("artifacts/smoke/profile")); desktop.MainWindow = window;
+            var window = new MainWindow(Path.GetFullPath("artifacts/smoke/profile")) { Position = new PixelPoint(100, 100) }; desktop.MainWindow = window;
             window.Opened += async (_, _) =>
             {
                 var exitCode = 0;
@@ -45,6 +45,7 @@ public sealed partial class SmokeApplication : Application
     }
     private static async Task RunAsync(MainWindow window)
     {
+        await Task.Delay(200);
         var model = Field<EditorViewModel>(window, "model"); var map = Field<NativeWebView>(window, "map");
         if (model.Editor.Document.Layers.Length != 0 || model.Editor.ActiveLayerId is not null)
             throw new InvalidOperationException("New projects must start with no layers.");
@@ -54,6 +55,7 @@ public sealed partial class SmokeApplication : Application
         model.Editor.SetActiveLayer(model.Editor.Document.Layers[0].Id);
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
         await VerifyToolShortcutsAsync(window, model);
+        await VerifyCoveragePathAsync(window, model);
         await VerifyPropertiesAsync(window, model);
         await VerifyAreaSelectionAsync(window, model);
         VerifyToolbar(window);
@@ -78,6 +80,7 @@ public sealed partial class SmokeApplication : Application
             if (response?.Contains("true") == true) { ready = true; break; }
         }
         if (!ready) throw new InvalidOperationException("Globo não inicializou: " + await map.InvokeScript("document.body.innerText"));
+        await VerifyMapCoverageMenuAsync(window, map, model);
         await VerifyMapWarningsAndShortcutsAsync(window, map, model);
         await VerifyMapAreaSelectionAsync(map, model);
         Console.WriteLine("GLOBE: " + await map.InvokeScript("JSON.stringify(window.algetric.diagnostics())"));

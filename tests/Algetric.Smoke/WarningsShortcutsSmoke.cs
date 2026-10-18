@@ -24,7 +24,7 @@ public sealed partial class SmokeApplication
             var windowBottom = window.PointToScreen(new Point(window.Bounds.Width / 2, window.Bounds.Height));
             CheckLayer(Math.Abs(position.X + popup.Child!.Bounds.Width / 2 - windowBottom.X) < 5 && position.Y > windowBottom.Y - 150,
                 $"Warnings must appear centered near the bottom of the window: popup {position}, size {popup.Child!.Bounds.Size}; bottom {windowBottom}.");
-            CheckLayer(ReferenceEquals(original, model.Editor.Document), "Warnings must leave the project unchanged.");
+            CheckLayer(original.Objects.SequenceEqual(model.Editor.Document.Objects) && original.Layers.SequenceEqual(model.Editor.Document.Layers) && !model.Editor.CanUndo, "Warnings must leave the project unchanged.");
             popup.IsOpen = false;
         }
         model.Load(original);

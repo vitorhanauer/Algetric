@@ -8,7 +8,7 @@ namespace Algetric.Desktop;
 public enum EditorTool { Select, Point, Segment, Polyline, Polygon, Origin, Move }
 public sealed record BridgeMessage(string Type, string Session, long Sequence, long Revision,
     Guid? Id, GeographicPoint[]? Vertices, int Vertex = 0, double Longitude = 0, double Latitude = 0, double Height = 0, Guid[]? Ids = null, EditorTool? Tool = null);
-public sealed class EditorViewModel : INotifyPropertyChanged
+public sealed partial class EditorViewModel : INotifyPropertyChanged
 {
     public ProjectEditor Editor { get; } = new();
     private readonly BridgeMessageGate gate = new();
@@ -26,7 +26,9 @@ public sealed class EditorViewModel : INotifyPropertyChanged
     public event Action? Changed;
     public event Action<string>? FileActionRequested;
     public event Action<string>? WarningRequested;
-    public EditorViewModel() { Editor.Changed += OnChanged; Editor.ViewChanged += () => PropertyChanged?.Invoke(this, new(null)); }
+    public event Action<Guid?>? CoveragePathRequested;
+    private readonly ICoveragePathGenerator pathGenerator;
+    public EditorViewModel(ICoveragePathGenerator? pathGenerator = null) { this.pathGenerator = pathGenerator ?? new BoustrophedonPathGenerator(); Editor.Changed += OnChanged; Editor.ViewChanged += () => PropertyChanged?.Invoke(this, new(null)); }
     private void OnChanged()
     {
         Revision++; PropertyChanged?.Invoke(this, new(null)); Changed?.Invoke();
@@ -106,6 +108,7 @@ public sealed class EditorViewModel : INotifyPropertyChanged
     private void Apply(BridgeMessage message)
     {
         if (message.Type is "save" or "open" or "new" or "addLayer") { FileActionRequested?.Invoke(message.Type); return; }
+        if (message.Type == "generatePath") { RequestCoveragePath(message.Id); return; }
         if (message.Type == "requireLayer") { EnsureActiveLayer(); return; }
         if (message.Type == "tool" && message.Tool is { } tool)
         {

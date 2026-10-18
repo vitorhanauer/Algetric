@@ -148,6 +148,14 @@ The application interface is currently in Portuguese. The instructions below use
 
 Local coordinates use meters in an ellipsoidal WGS84 azimuthal equidistant projection, transformed through PROJ. Measurements are **planimetric**, rather than geodesic. Editing is limited to a radius of 50 km from the origin and latitudes within ±80°. The origin becomes fixed after the first object is created, even if all objects are subsequently deleted. The globe remains navigable worldwide. Self-intersecting or degenerate polygons and invalid coordinates are rejected without replacing the last valid state.
 
+## Coverage paths
+
+Right-click a polygon on the plane, map, or its object row and choose **Generate point path**. You can also open the dialog from **Edit**. The context polygon is selected automatically; choose another polygon if needed, select existing start/end points or enter coordinates, and set the coverage width in meters and overlap percentage (0% to less than 100%). Both endpoints must be inside the polygon or on its boundary.
+
+Generation runs in the background using `BoustrophedonDotnetWrapper` 0.1.3. The result is an editable path object in the polygon's layer, including the requested endpoints. Paths may revisit waypoints, are saved with the project, and support undo/redo as a single operation. Cancelling the dialog discards a pending result. Very dense requests are rejected when they would exceed 10,000 sweep lanes.
+
+The current NuGet package supplies its native planner only for **Linux x64 with glibc**. Other desktop platforms can open and edit saved paths, but cannot generate new paths with this package version.
+
 ## Maps and offline use
 
 Under **Map → Map provider**, configure an HTTPS raster XYZ server with `{z}`, `{x}`, and `{y}` placeholders, supported zoom levels, and attribution. Use your own server or a contracted provider that authorizes the intended use. No public server or paid service is preconfigured. Credentials must not be included in the URL; an optional Bearer token is stored in Linux Secret Service or encrypted with Windows DPAPI, separately from the project.
@@ -175,4 +183,4 @@ The smoke test opens a real window and checks WebGL, synchronization, globe/map 
 
 The final package is written to `artifacts/algetric-linux-x64.tar.gz`. Extract it and run `bash install.sh` to add it to your applications menu, or run `./Algetric.Desktop` directly. The package includes the .NET runtime; PROJ and WebKitGTK remain native system dependencies. See the [architecture](docs/architecture.md), [verification](docs/verification.md), and [license notices](THIRD_PARTY_NOTICES.md).
 
-Coverage algorithms, obstacle avoidance, 3D terrain, polygons with holes, and advanced GIS formats are outside the scope of this MVP.
+Obstacle avoidance, 3D terrain, polygons with holes, and advanced GIS formats are outside the scope of this MVP.

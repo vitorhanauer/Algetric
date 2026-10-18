@@ -90,12 +90,15 @@ public sealed partial class CartesianCanvas : Control
         {
             var active = selected && i == model.VertexIndex;
             context.DrawEllipse(active ? Brushes.RoyalBlue : brush, new Pen(Brushes.White, 1.5), points[i], active ? 6 : 4, active ? 6 : 4);
-            if (selected) Label(context, ((char)('A' + i % 26)).ToString(), points[i] + new Vector(7, -18));
+            if (selected && (kind != ShapeKind.CoveragePath || i == model.VertexIndex)) Label(context, ((char)('A' + i % 26)).ToString(), points[i] + new Vector(7, -18));
         }
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e); Focus(); var position = e.GetPosition(this); var properties = e.GetCurrentPoint(this).Properties;
+        if (properties.IsRightButtonPressed && PolygonAt(position) is { } polygon)
+        { ContextMenu = PolygonContextMenu.Create(model, polygon.Id); return; }
+        ContextMenu = null;
         if (properties.IsMiddleButtonPressed || properties.IsRightButtonPressed ||
             (properties.IsLeftButtonPressed && model.Tool == EditorTool.Move))
         { panning = true; previous = position; e.Pointer.Capture(this); UpdateCursor(); e.Handled = true; return; }

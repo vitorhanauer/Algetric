@@ -117,6 +117,8 @@ internal sealed partial class LayerPanel : StackPanel
         var name = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis };
         var select = ActionButton(name, () => { model.VertexIndex = 0; model.Editor.Select(id); });
         select.Name = $"ObjectSelect_{id:N}";
+        if (model.Editor.Document.Objects.First(shape => shape.Id == id).Kind == ShapeKind.Polygon)
+            select.ContextMenu = PolygonContextMenu.Create(model, id);
         select.AddHandler(PointerPressedEvent, (_, e) => PrepareDrag(id, select, e), RoutingStrategies.Tunnel);
         var delete = ActionButton(new Avalonia.Controls.Shapes.Path
         {

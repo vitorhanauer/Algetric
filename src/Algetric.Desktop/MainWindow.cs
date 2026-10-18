@@ -41,6 +41,7 @@ public sealed class MainWindow : Window
         tiles = new(Path.Combine(dataDirectory, "maps.sqlite")); settings = new(dataDirectory);
         canvas = new(model); warningToast = new();
         model.WarningRequested += warningToast.Show;
+        model.CoveragePathRequested += polygonId => _ = RunAsync(() => Dialogs.GenerateCoveragePath(this, model, polygonId));
         properties = new(model, canvas.InvalidateVisual);
         layers = new(model, dragOverlay, layer => _ = RunAsync(() => EditLayerAsync(layer)),
             layer => _ = RunAsync(async () => { await Dialogs.DeleteLayer(this, model, layer); }));
@@ -131,6 +132,7 @@ public sealed class MainWindow : Window
         edit.Items.Add(Item("Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }));
         edit.Items.Add(Item("Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; }));
         edit.Items.Add(Item("Excluir objeto", () => { model.Editor.DeleteSelected(); return Task.CompletedTask; }));
+        edit.Items.Add(Item("Gerar caminho de pontos…", () => Dialogs.GenerateCoveragePath(this, model, model.Selected?.Kind == ShapeKind.Polygon ? model.Selected.Id : null)));
         var maps = new MenuItem { Header = "Mapa" }; maps.Items.Add(Item("Origem geográfica…", EditOriginAsync));
         maps.Items.Add(Item("Definir origem no mapa", () => { model.SetTool(EditorTool.Origin); return Task.CompletedTask; }));
         maps.Items.Add(Item("Provedor de mapas…", EditProviderAsync)); maps.Items.Add(Item("Regiões offline…", OfflineAsync));

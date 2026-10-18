@@ -8,7 +8,7 @@ using System.Globalization;
 
 namespace Algetric.Desktop;
 
-internal static class Dialogs
+internal static partial class Dialogs
 {
     public static string Number(double value) => value.ToString("G12", CultureInfo.InvariantCulture);
     public static double Parse(TextBox field)
