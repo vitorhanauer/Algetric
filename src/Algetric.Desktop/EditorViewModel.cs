@@ -85,7 +85,7 @@ public sealed partial class EditorViewModel : INotifyPropertyChanged
             status = Status,
             language = UiText.Current.Code,
             provider = Provider is null ? null : new { Provider.Id, Provider.MinZoom, Provider.MaxZoom, Provider.Attribution },
-            objects = document.Objects.Where(o => document.Layers.Any(l => l.Id == o.LayerId && l.Visible)).Select(o => new
+            objects = document.Objects.Where(o => o.Visible && document.Layers.Any(l => l.Id == o.LayerId && l.Visible)).Select(o => new
             {
                 o.Id,
                 o.Name,

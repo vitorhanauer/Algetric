@@ -45,7 +45,7 @@ public sealed partial class CartesianCanvas : Control
         foreach (var shape in model.Editor.Document.Objects)
         {
             var layer = model.Editor.Document.Layers.First(l => l.Id == shape.LayerId);
-            if (!layer.Visible) continue;
+            if (!shape.Visible || !layer.Visible) continue;
             var vertices = shape.Id == dragId && preview is not null ? preview : shape.Vertices.ToArray();
             DrawShape(context, vertices, shape.Kind, Color.Parse(layer.Color), model.Editor.SelectedIds.Contains(shape.Id));
         }
@@ -170,7 +170,7 @@ public sealed partial class CartesianCanvas : Control
     {
         foreach (var shape in model.Editor.Document.Objects.Reverse())
         {
-            if (!model.Editor.Document.Layers.First(l => l.Id == shape.LayerId).Visible) continue;
+            if (!shape.Visible || !model.Editor.Document.Layers.First(l => l.Id == shape.LayerId).Visible) continue;
             var vertices = shape.Vertices;
             for (var i = 0; i < vertices.Length; i++) if (Distance(ToScreen(vertices[i]), position) <= 10) return (shape, i);
             var p = ToLocal(position); var point = new NetTopologySuite.Geometries.Point(p.X, p.Y);

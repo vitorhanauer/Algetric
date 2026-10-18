@@ -30,7 +30,7 @@ public sealed class ProjectEditor
         var left = Math.Min(start.X, end.X); var right = Math.Max(start.X, end.X);
         var bottom = Math.Min(start.Y, end.Y); var top = Math.Max(start.Y, end.Y);
         var visibleLayers = Document.Layers.Where(layer => layer.Visible).Select(layer => layer.Id).ToHashSet();
-        SelectMany(Document.Objects.Where(shape => visibleLayers.Contains(shape.LayerId) &&
+        SelectMany(Document.Objects.Where(shape => shape.Visible && visibleLayers.Contains(shape.LayerId) &&
             shape.Vertices.All(point => point.X >= left && point.X <= right && point.Y >= bottom && point.Y <= top))
             .Select(shape => shape.Id));
     }
@@ -87,6 +87,14 @@ public sealed class ProjectEditor
     {
         if (SelectedIds.Count == 0) return;
         Commit(Document with { Objects = Document.Objects.RemoveAll(shape => SelectedIds.Contains(shape.Id)) });
+    }
+    public void SetObjectVisibility(Guid id, bool visible)
+    {
+        var index = Document.Objects.FindIndex(shape => shape.Id == id);
+        if (index < 0) throw new ArgumentException("Objeto inexistente.");
+        var shape = Document.Objects[index];
+        if (shape.Visible == visible) return;
+        Commit(Document with { Objects = Document.Objects.SetItem(index, shape with { Visible = visible }) });
     }
     public void Delete(Guid id)
     {
