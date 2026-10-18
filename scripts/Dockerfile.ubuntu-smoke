@@ -1,0 +1,11 @@
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libwebkit2gtk-4.1-0 libproj25 proj-data libicu74 libfontconfig1 \
+    xvfb xauth dbus-x11 libgl1-mesa-dri ca-certificates fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+RUN useradd --create-home runner && mkdir /work && chown runner:runner /work
+COPY artifacts/smoke-linux-x64 /opt/algetric-smoke
+USER runner
+WORKDIR /work
+ENV LIBGL_ALWAYS_SOFTWARE=1
+CMD ["dbus-run-session", "--", "xvfb-run", "-a", "/opt/algetric-smoke/Algetric.Smoke"]

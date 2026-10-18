@@ -1,0 +1,7 @@
+*
+!artifacts/
+artifacts/*
+!artifacts/smoke-linux-x64/
+!artifacts/smoke-linux-x64/**
+!scripts/
+!scripts/Dockerfile.ubuntu-smoke
