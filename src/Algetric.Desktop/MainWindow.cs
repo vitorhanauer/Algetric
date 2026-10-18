@@ -139,8 +139,8 @@ public sealed class MainWindow : Window
     private Control BuildToolbar()
     {
         var panel = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8) };
-        foreach (var (icon, label, tool) in new[]{("↖","Selecionar",EditorTool.Select),("✥","Mover",EditorTool.Move),("•","Ponto",EditorTool.Point),
-            ("╱","Segmento",EditorTool.Segment),("⌁","Linha",EditorTool.Polyline),("⬡","Polígono",EditorTool.Polygon)})
+        foreach (var (icon, label, tool) in new[]{("mouse","Selecionar",EditorTool.Select),("✥","Mover",EditorTool.Move),("•","Ponto",EditorTool.Point),
+            ("╱","Linha",EditorTool.Polyline),("⬡","Polígono",EditorTool.Polygon)})
         {
             var button = ToolbarButton(icon, label, () => { canvas.CancelDraft(); model.SetTool(tool); return Task.CompletedTask; });
             if (tool == EditorTool.Move) ToolTip.SetTip(button, "Mover o plano • segure Espaço para ativar temporariamente");
@@ -159,9 +159,21 @@ public sealed class MainWindow : Window
         button.HorizontalContentAlignment = HorizontalAlignment.Center;
         button.VerticalContentAlignment = VerticalAlignment.Center;
         button.Background = Brushes.Transparent;
+        if (icon == "mouse") button.Content = MousePointerIcon(button);
         ToolTip.SetTip(button, label);
         Avalonia.Automation.AutomationProperties.SetName(button, label);
         return button;
+    }
+    private static Control MousePointerIcon(Button button)
+    {
+        var pointer = new Avalonia.Controls.Shapes.Path
+        {
+            Data = Geometry.Parse("M3,2 L3,22 L8,17 L12,25 L16,23 L12,15 L20,15 Z"),
+            Width = 23, Height = 27, Stretch = Stretch.Uniform
+        };
+        pointer.Bind(Avalonia.Controls.Shapes.Shape.FillProperty,
+            new Avalonia.Data.Binding(nameof(Foreground)) { Source = button });
+        return pointer;
     }
     private void Refresh()
     {
