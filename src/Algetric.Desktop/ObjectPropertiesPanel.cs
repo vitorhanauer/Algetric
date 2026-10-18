@@ -15,6 +15,11 @@ internal sealed class ObjectPropertiesPanel : StackPanel
     private readonly TextBox y;
     private readonly ComboBox vertex = new() { Name = "PropertyVertex", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock measurements = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private readonly Grid identity;
+    private readonly Grid coordinates;
+    private readonly StackPanel vertexField = new() { Spacing = 4 };
+    private readonly StackPanel functionFields = new() { Spacing = 8, IsVisible = false };
+    private readonly TextBlock functionSummary = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
     private Guid? objectId;
     private int vertexIndex;
     private bool refreshing;
@@ -23,13 +28,15 @@ internal sealed class ObjectPropertiesPanel : StackPanel
     public ObjectPropertiesPanel(EditorViewModel model, Action vertexChanged)
     {
         this.model = model; this.vertexChanged = vertexChanged; Spacing = 8;
-        var identity = Row("*,110"); var coordinates = Row("*,*");
+        identity = Row("*,110"); coordinates = Row("*,*");
         name = Field(identity, 0, "Nome", "PropertyName");
-        var vertexField = new StackPanel { Spacing = 4 };
         vertexField.Children.Add(new TextBlock { [!TextBlock.TextProperty] = UiText.Binding("Vértice"), FontSize = 12 });
         vertexField.Children.Add(vertex); Grid.SetColumn(vertexField, 1); identity.Children.Add(vertexField);
         x = Field(coordinates, 0, "X (m)", "PropertyX"); y = Field(coordinates, 1, "Y (m)", "PropertyY");
         Children.Add(identity); Children.Add(coordinates); Children.Add(measurements);
+        var editFunction = new Button { Name = "EditFunctionGraph", [!Button.ContentProperty] = UiText.Binding("Editar função…") };
+        editFunction.Click += (_, _) => { if (model.Selected?.Kind == ShapeKind.FunctionGraph) model.RequestFunctionGraph(model.Selected.Id); };
+        functionFields.Children.Add(functionSummary); functionFields.Children.Add(editFunction); Children.Add(functionFields);
         vertex.SelectionChanged += (_, _) => SelectVertex();
     }
     public void Refresh()
@@ -42,6 +49,14 @@ internal sealed class ObjectPropertiesPanel : StackPanel
             var shape = model.Selected; objectId = shape?.Id; IsVisible = shape is not null;
             if (shape is null) return;
             name.Text = shape.Name;
+            var isFunction = shape.Kind == ShapeKind.FunctionGraph;
+            vertexField.IsVisible = coordinates.IsVisible = measurements.IsVisible = !isFunction;
+            functionFields.IsVisible = isFunction; Grid.SetColumnSpan((Control)name.Parent!, isFunction ? 2 : 1);
+            if (shape.Function is { } function)
+            {
+                functionSummary.Text = $"f(x) = {function.Expression}\n" + UiText.F("Intervalo de X: [{0}; {1}]", Dialogs.Number(function.MinimumX), Dialogs.Number(function.MaximumX));
+                return;
+            }
             vertex.ItemsSource = Enumerable.Range(1, shape.Vertices.Length).Select(i => UiText.F("Vértice {0}", i)).ToArray();
             vertexIndex = Math.Clamp(model.VertexIndex, 0, shape.Vertices.Length - 1);
             vertex.SelectedIndex = vertexIndex; RefreshCoordinates(shape); RefreshMeasurements(shape);
@@ -64,6 +79,7 @@ internal sealed class ObjectPropertiesPanel : StackPanel
         {
             model.Try(() =>
             {
+                if (shape.Kind == ShapeKind.FunctionGraph) { model.UpdateObject(shape.Id, name.Text ?? "", []); return; }
                 var points = shape.Vertices.ToArray(); var current = points[vertexIndex];
                 // Keep full precision when the user has not changed the formatted coordinate.
                 points[vertexIndex] = new(ParseChanged(x, current.X), ParseChanged(y, current.Y));

@@ -57,6 +57,7 @@ public sealed partial class SmokeApplication : Application
         await VerifyLanguagesAsync(window, model);
         await VerifyPolygonVisibilityAsync(window, model);
         await VerifyOtherObjectVisibilityAsync(window, model);
+        await VerifyFunctionGraphsAsync(window, model);
         await VerifyToolShortcutsAsync(window, model);
         await VerifyCoveragePathAsync(window, model);
         await VerifyPropertiesAsync(window, model);

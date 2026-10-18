@@ -112,6 +112,7 @@ public sealed partial class EditorViewModel : INotifyPropertyChanged
     {
         if (message.Type is "save" or "open" or "new" or "addLayer") { FileActionRequested?.Invoke(message.Type); return; }
         if (message.Type == "generatePath") { RequestCoveragePath(message.Id); return; }
+        if (message.Type == "function") { RequestFunctionGraph(); return; }
         if (message.Type == "requireLayer") { EnsureActiveLayer(); return; }
         if (message.Type == "tool" && message.Tool is { } tool)
         {

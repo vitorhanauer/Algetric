@@ -46,6 +46,7 @@ public sealed partial class CartesianCanvas : Control
         {
             var layer = model.Editor.Document.Layers.First(l => l.Id == shape.LayerId);
             if (!shape.Visible || !layer.Visible) continue;
+            if (shape.Kind == ShapeKind.FunctionGraph) { DrawFunction(context, shape, Color.Parse(layer.Color)); continue; }
             var vertices = shape.Id == dragId && preview is not null ? preview : shape.Vertices.ToArray();
             DrawShape(context, vertices, shape.Kind, Color.Parse(layer.Color), model.Editor.SelectedIds.Contains(shape.Id));
         }
@@ -105,6 +106,7 @@ public sealed partial class CartesianCanvas : Control
         if (!properties.IsLeftButtonPressed) return;
         if (model.Tool != EditorTool.Select) { CreateAt(position, e.ClickCount); return; }
         var hit = Hit(position); model.VertexIndex = Math.Max(0, hit.Vertex); model.Editor.Select(hit.Shape?.Id);
+        if (hit.Shape?.Kind == ShapeKind.FunctionGraph) return;
         if (hit.Shape is null) { BeginAreaSelection(position, e.Pointer); return; }
         pressed = position; dragId = hit.Shape.Id; dragVertex = hit.Vertex; dragVertices = hit.Shape.Vertices.ToArray();
         e.Pointer.Capture(this);

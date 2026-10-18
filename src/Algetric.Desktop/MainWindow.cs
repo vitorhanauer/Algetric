@@ -43,6 +43,7 @@ public sealed partial class MainWindow : Window
         canvas = new(model); warningToast = new();
         model.WarningRequested += warningToast.Show;
         model.CoveragePathRequested += polygonId => _ = RunAsync(() => Dialogs.GenerateCoveragePath(this, model, polygonId));
+        model.FunctionGraphRequested += id => _ = RunAsync(() => EditFunctionAsync(id));
         properties = new(model, canvas.InvalidateVisual);
         layers = new(model, dragOverlay, layer => _ = RunAsync(() => EditLayerAsync(layer)),
             layer => _ = RunAsync(async () => { await Dialogs.DeleteLayer(this, model, layer); }));
@@ -154,6 +155,8 @@ public sealed partial class MainWindow : Window
                 () => { SelectTool(shortcut.Tool); return Task.CompletedTask; });
             tools.Add((button, shortcut.Tool)); panel.Children.Add(button);
         }
+        var function = ToolbarButton("f(x)", "Desenhar função", () => { model.RequestFunctionGraph(); return Task.CompletedTask; }, "F");
+        function.Name = "FunctionGraphButton"; function.Width = 52; function.FontSize = 20; panel.Children.Add(function);
         panel.Children.Add(ToolbarButton("↶", "Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }, "Ctrl+Z"));
         panel.Children.Add(ToolbarButton("↷", "Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; }, "Ctrl+Y")); return panel;
     }
@@ -290,6 +293,7 @@ public sealed partial class MainWindow : Window
     {
         if (e.KeyModifiers != KeyModifiers.None || e.Source is TextBox or ComboBox || e.Source is Visual visual &&
             visual.GetVisualAncestors().Any(parent => parent is TextBox or ComboBox or Menu)) return false;
+        if (e.Key == Key.F) { model.RequestFunctionGraph(); e.Handled = true; return true; }
         var shortcut = EditorShortcuts.Tools.FirstOrDefault(shortcut => shortcut.Key == e.Key);
         if (shortcut is null) return false;
         SelectTool(shortcut.Tool); e.Handled = true; return true;

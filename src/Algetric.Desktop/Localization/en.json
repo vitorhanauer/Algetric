@@ -176,5 +176,21 @@
   "Cor selecionada": "Selected color",
   "A região excede o limite de 50,000 tiles. Reduza a área ou o zoom.": "The region exceeds the limit of 50,000 tiles. Reduce the area or zoom.",
   "A região excede o limite de 50.000 tiles. Reduza a área ou o zoom.": "The region exceeds the limit of 50,000 tiles. Reduce the area or zoom.",
-  "Mostrar ou ocultar objeto": "Show or hide object"
+  "Mostrar ou ocultar objeto": "Show or hide object",
+  "Desenhar função": "Plot function",
+  "Desenhar função (F)": "Plot function (F)",
+  "Editar função": "Edit function",
+  "Editar função…": "Edit function…",
+  "Função f(x)": "Function f(x)",
+  "X mínimo": "Minimum X",
+  "X máximo": "Maximum X",
+  "Desenhar gráfico": "Plot graph",
+  "Intervalo de X: [{0}; {1}]": "X range: [{0}; {1}]",
+  "Exemplos: 5; 2*x^2 - 3*x + 1; 2^x; exp(x); ln(x); log(x); sin(x) + cos(2*x).": "Examples: 5; 2*x^2 - 3*x + 1; 2^x; exp(x); ln(x); log(x); sin(x) + cos(2*x).",
+  "Combine funções com +, -, *, /, ^ e parênteses. Trigonometria em radianos. log(x) usa base 10; ln(x) é natural; log(x, b) usa base b. Use ponto decimal. Constantes: pi, π e e.": "Combine functions with +, -, *, /, ^ and parentheses. Trigonometry uses radians. log(x) is base 10; ln(x) is natural; log(x, b) uses base b. Use a decimal point. Constants: pi, π and e.",
+  "Expressão inválida. Verifique os operadores, parênteses e nomes das funções.": "Invalid expression. Check operators, parentheses and function names.",
+  "O intervalo de X deve ser crescente e estar entre -50000 e 50000.": "The X interval must be increasing and between -50000 and 50000.",
+  "A função não possui trechos válidos nesse intervalo.": "The function has no valid segments in this interval.",
+  "Selecione um gráfico de função existente.": "Select an existing function graph.",
+  "Definição de gráfico de função inválida.": "Invalid function graph definition."
 }
