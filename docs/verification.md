@@ -14,6 +14,12 @@ JavaScript tests verify distinct transition thresholds and rejection of stale sn
 
 Run `dotnet run --project tests/Algetric.Smoke -- --properties-only` in a graphical session to check the compact sidebar. This checks that name/vertex and X/Y share their respective rows, Enter and focus loss save edits, moving between fields preserves focus, repeated confirmation creates only one undo operation, renaming works without an Apply button, invalid coordinates preserve the geometry, edits target the selected vertex, and inline deletion removes the intended object and supports undo. The same scenario checks the Move toolbar button, panning with the left mouse button, temporary movement while Space is held (including key repeat), restoration on release or window deactivation, preservation of an unfinished segment, and ignoring Space in text inputs. It writes `artifacts/smoke/cartesian.png` for visual inspection. These checks also run before the full WebView smoke scenario.
 
+## Object visibility checks
+
+The editor smoke scenario checks visibility controls for points, segments, polylines, polygons, and generated coverage paths. Hiding an object must remove its drawing, prevent picking it on the plane, and omit it from the map snapshot while keeping its row in the layer list. Other objects remain visible. The scenario also checks showing the object again, undo/redo updating the checkbox, and Portuguese/English tooltips preserving the hidden state during a language change. These checks run with `--properties-only` and as part of the full smoke test.
+
+The .NET tests verify independent object and layer visibility, exclusion from area selection, and saving/reopening visibility for every object type. Legacy projects without an object visibility field must load their objects as visible.
+
 ## Layer panel checks
 
 The editor smoke scenario checks the **+** button in the layer heading, indented object rows, active-layer selection, and creation in that layer. It simulates pointer press/movement/release to verify that a dragged row disappears immediately, a floating preview follows the pointer, dropping on another layer moves the object, and undo/redo preserves its identity and selection. Dropping outside the layer list or onto the original layer leaves the document and history untouched. Escape and loss of pointer capture cancel the drag. The drag preview is rendered to `artifacts/smoke/layer-drag.png` for inspection.
