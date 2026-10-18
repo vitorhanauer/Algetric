@@ -2,6 +2,10 @@
 
 Desktop editor for local geometries with a Cartesian plane and an Earth globe, built with .NET 10 and Avalonia for Linux and Windows x64. The interface follows `mockups/example.png`.
 
+![Cartesian editor showing polygon vertices, layers, coordinates, and measurements in the properties panel](docs/images/cartesian-editor.png)
+
+*Edit polygons on the Cartesian plane, organize objects into layers, and inspect vertex coordinates, perimeter, and area.*
+
 ## Install on Linux
 
 Install the native dependencies first. A published package includes the .NET runtime and does not require the .NET SDK or Node.js.
@@ -148,13 +152,29 @@ The application interface is currently in Portuguese. The instructions below use
 
 Local coordinates use meters in an ellipsoidal WGS84 azimuthal equidistant projection, transformed through PROJ. Measurements are **planimetric**, rather than geodesic. Editing is limited to a radius of 50 km from the origin and latitudes within ±80°. The origin becomes fixed after the first object is created, even if all objects are subsequently deleted. The globe remains navigable worldwide. Self-intersecting or degenerate polygons and invalid coordinates are rejected without replacing the last valid state.
 
+The appearance follows the operating system theme by default. Use **Appearance** to choose a light or dark theme manually.
+
+| Light theme | Dark theme |
+| --- | --- |
+| ![Cartesian plane and properties panel in the light theme](docs/images/light-theme.png) | ![Cartesian plane and properties panel in the dark theme](docs/images/cartesian-editor.png) |
+
 ## Coverage paths
 
 Right-click a polygon on the plane, map, or its object row and choose **Generate point path**. You can also open the dialog from **Edit**. The context polygon is selected automatically; choose another polygon if needed, select existing start/end points, choose vertices of the selected polygon, or enter coordinates, and set the coverage width in meters and overlap percentage (0% to less than 100%). Endpoints may be inside or outside the polygon, within the project’s 50 km coordinate limit. External endpoints are joined to the nearest polygon boundary by straight entry/exit segments; the coverage route itself remains inside the polygon.
 
 The optional **Obstructions** multiselect accepts other polygons; click an item to select or deselect it, and leave everything unselected for coverage without obstructions. Only polygons strictly inside the main area are sent to the planner. External, partially external, and boundary-touching polygons are silently ignored. Internal obstructions must not touch or overlap each other, and endpoints must not lie inside them. The generated route avoids their interiors.
 
+<p align="center">
+  <img src="docs/images/coverage-obstructions.png" alt="Coverage path dialog with polygon selection, multiple optional obstructions, start and end vertices, width, and overlap" width="500">
+</p>
+
+*Configure the polygon, optional obstructions, endpoints, coverage width, and overlap before generating a path.*
+
 Generation runs in the background using `BoustrophedonDotnetWrapper` 0.1.3. The result is an editable path object in the polygon's layer, including the requested endpoints. Paths may revisit waypoints, are saved with the project, and support undo/redo as a single operation. Cancelling the dialog discards a pending result. Very dense requests are rejected when they would exceed 10,000 sweep lanes.
+
+![Generated coverage path selected inside a polygon, with its waypoints, layer entry, and editable properties](docs/images/coverage-path.png)
+
+*A generated path without obstructions, selected for editing on the Cartesian plane.*
 
 The current NuGet package supplies its native planner only for **Linux x64 with glibc**. Other desktop platforms can open and edit saved paths, but cannot generate new paths with this package version.
 
