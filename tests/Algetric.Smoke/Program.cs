@@ -18,7 +18,7 @@ internal static class Program
     public static void Main(string[] args) => AppBuilder.Configure<SmokeApplication>().UsePlatformDetect()
         .WithInterFont().LogToTrace().StartWithClassicDesktopLifetime(args);
 }
-public sealed class SmokeApplication : Application
+public sealed partial class SmokeApplication : Application
 {
     public override void Initialize() { Styles.Add(new FluentTheme()); RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light; }
     public override void OnFrameworkInitializationCompleted()
@@ -46,14 +46,14 @@ public sealed class SmokeApplication : Application
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
         await VerifyPropertiesAsync(window, model);
         VerifyNavigation(window, model);
+        await VerifyLayerPanelAsync(window, model);
         model.Editor.MarkSaved();
         await Task.Delay(1000);
         Directory.CreateDirectory("artifacts/smoke");
         using (var bitmap = new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width, (int)window.Bounds.Height)))
         { bitmap.Render(window); bitmap.Save("artifacts/smoke/cartesian.png", PngBitmapEncoderOptions.Default); }
         if (((IClassicDesktopStyleApplicationLifetime)Current!.ApplicationLifetime!).Args?.Contains("--properties-only") == true) return;
-        var root = (DockPanel)window.Content!;
-        ((TabControl)root.Children.Last()).SelectedIndex = 1;
+        window.GetVisualDescendants().OfType<TabControl>().Single().SelectedIndex = 1;
         var ready = false;
         for (var i = 0; i < 40; i++)
         {

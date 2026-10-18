@@ -8,6 +8,8 @@
 
 Canvas events are converted from pixels to meters. The map emits WGS84 positions, which PROJ transforms into meters. Both paths validate bounds and geometries before recording a new snapshot. Drags are committed only when the pointer is released; previews do not modify the document.
 
+The sidebar groups object rows by their layer, with no nested layers. Its drag preview hides the source row without modifying the document. A valid drop commits only the object’s layer identifier as one history operation; cancellation restores the row. Drop detection respects the visible scroll area. Selecting the active layer for new objects does not create history.
+
 The document is the source of truth. C# projects visible objects into WGS84 and sends their state to Cesium. Messages include a session, sequence number, and revision. Replayed messages, messages from an old session, and messages with a stale revision do not modify the document. Switching projects renews the session. Selection does not create a history entry.
 
 The bridge uses typed JSON over loopback HTTP and updates through `NativeWebView.InvokeScript`. Kestrel binds a user-owned socket on both platforms, avoiding Windows HTTP.sys URL ACL requirements. The server listens only on 127.0.0.1, requires a random path for each execution, and rejects foreign origins. The temporary URL and static assets contain no credentials. Browser tile URLs point to the loopback server; provider authentication happens in C#.

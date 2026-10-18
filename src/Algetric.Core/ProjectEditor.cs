@@ -71,6 +71,21 @@ public sealed class ProjectEditor
         var layer = new Layer(Guid.NewGuid(), name, color);
         Commit(Document with { Layers = Document.Layers.Add(layer) }, layer.Id);
     }
+    public void MoveObjectToLayer(Guid objectId, Guid layerId)
+    {
+        var index = Document.Objects.FindIndex(shape => shape.Id == objectId);
+        if (index < 0) throw new ArgumentException("Objeto inexistente.");
+        if (!Document.Layers.Any(layer => layer.Id == layerId)) throw new ArgumentException("Camada inexistente.");
+        var shape = Document.Objects[index];
+        if (shape.LayerId == layerId) return;
+        Commit(Document with { Objects = Document.Objects.SetItem(index, shape with { LayerId = layerId }) });
+    }
+    public void SetActiveLayer(Guid layerId)
+    {
+        if (!Document.Layers.Any(layer => layer.Id == layerId)) throw new ArgumentException("Camada inexistente.");
+        if (ActiveLayerId == layerId) return;
+        ActiveLayerId = layerId; Changed?.Invoke();
+    }
     public void UpdateLayer(Layer layer)
     {
         var index = Document.Layers.FindIndex(l => l.Id == layer.Id);

@@ -17,8 +17,8 @@ public sealed class MainWindow : Window
 {
     private readonly EditorViewModel model = new();
     private readonly CartesianCanvas canvas;
-    private readonly StackPanel layers = new() { Spacing = 5 };
-    private readonly StackPanel objects = new() { Spacing = 4 };
+    private readonly LayerPanel layers;
+    private readonly Canvas dragOverlay = new() { IsHitTestVisible = false };
     private readonly ObjectPropertiesPanel properties;
     private readonly TextBlock status = new() { Margin = new Thickness(12, 6) };
     private readonly NativeWebView map = new();
@@ -30,9 +30,6 @@ public sealed class MainWindow : Window
     private bool mapReady;
     private bool closingApproved;
     private readonly List<(Button Button, EditorTool Tool)> tools = [];
-    private readonly Dictionary<Guid, (Button Select, Button Delete)> objectButtons = [];
-    private Layer[] displayedLayers = [];
-    private Guid displayedActiveLayer;
     public MainWindow(string? storageDirectory = null)
     {
         Width = 1380; Height = 880; MinWidth = 940; MinHeight = 620;
@@ -41,6 +38,7 @@ public sealed class MainWindow : Window
         tiles = new(Path.Combine(dataDirectory, "maps.sqlite")); settings = new(dataDirectory);
         canvas = new(model);
         properties = new(model, canvas.InvalidateVisual);
+        layers = new(model, dragOverlay, layer => _ = RunAsync(() => EditLayerAsync(layer)));
         server = new(Path.Combine(AppContext.BaseDirectory, "Web"), tiles, client);
         server.GetStateAsync = async () => await Dispatcher.UIThread.InvokeAsync(() => { mapReady = true; return model.MapState(); });
         server.HandleMessageAsync = async json => await Dispatcher.UIThread.InvokeAsync(() => model.HandleMessage(json));
@@ -53,7 +51,7 @@ public sealed class MainWindow : Window
         KeyDown += OnKeyDown;
         AddHandler(KeyDownEvent, OnMoveKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnMoveKeyUp, RoutingStrategies.Tunnel, handledEventsToo: true);
-        Deactivated += (_, _) => model.EndTemporaryMove();
+        Deactivated += (_, _) => { model.EndTemporaryMove(); layers.CancelDrag(); };
         Closing += OnClosing;
         Closed += (_, _) => { server.Dispose(); client.Dispose(); };
         Opened += async (_, _) => await RunAsync(LoadProviderAsync);
@@ -66,9 +64,8 @@ public sealed class MainWindow : Window
         header.Children.Add(BuildMenu()); header.Children.Add(BuildToolbar()); root.Children.Add(header);
         DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
         var sidebar = new StackPanel { Spacing = 14, Margin = new Thickness(12) };
-        sidebar.Children.Add(Heading("Projeto")); sidebar.Children.Add(Heading("Camadas"));
-        sidebar.Children.Add(layers); sidebar.Children.Add(Button("+ Camada", () => EditLayerAsync(null)));
-        sidebar.Children.Add(Heading("Objetos")); sidebar.Children.Add(objects);
+        sidebar.Children.Add(Heading("Projeto"));
+        sidebar.Children.Add(BuildLayersHeading()); sidebar.Children.Add(layers);
         sidebar.Children.Add(Heading("Propriedades")); sidebar.Children.Add(properties);
         var left = new Border
         {
@@ -82,8 +79,17 @@ public sealed class MainWindow : Window
         var tabs = new TabControl();
         tabs.Items.Add(new TabItem { Header = "Plano cartesiano", Content = canvas });
         tabs.Items.Add(new TabItem { Header = "🌐 Mapa", Content = map });
-        tabs.SelectionChanged += (_, _) => { model.EndTemporaryMove(); canvas.CancelDraft(); }; root.Children.Add(tabs);
-        return root;
+        tabs.SelectionChanged += (_, _) => { layers.CancelDrag(); model.EndTemporaryMove(); canvas.CancelDraft(); }; root.Children.Add(tabs);
+        var overlay = new Grid(); overlay.Children.Add(root); overlay.Children.Add(dragOverlay);
+        return overlay;
+    }
+    private Control BuildLayersHeading()
+    {
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var add = Button("+", () => EditLayerAsync(null)); add.Name = "AddLayer";
+        ToolTip.SetTip(add, "Criar camada"); Avalonia.Automation.AutomationProperties.SetName(add, "Criar camada");
+        Grid.SetColumn(add, 1); var title = Heading("Camadas"); title.VerticalAlignment = VerticalAlignment.Center;
+        row.Children.Add(title); row.Children.Add(add); return row;
     }
     private Menu BuildMenu()
     {
@@ -122,71 +128,7 @@ public sealed class MainWindow : Window
     {
         Title = model.Title; status.Text = model.Status;
         foreach (var (button, tool) in tools) button.Background = model.Tool == tool ? Brush.Parse("#D7F1FB") : Brushes.Transparent;
-        RefreshLayers(); RefreshObjects(); properties.Refresh(); _ = SyncMapAsync();
-    }
-    private void RefreshLayers()
-    {
-        if (displayedLayers.SequenceEqual(model.Editor.Document.Layers) && displayedActiveLayer == model.Editor.ActiveLayerId) return;
-        displayedLayers = model.Editor.Document.Layers.ToArray(); displayedActiveLayer = model.Editor.ActiveLayerId;
-        layers.Children.Clear();
-        foreach (var layer in model.Editor.Document.Layers)
-        {
-            var row = new DockPanel(); var edit = Button("⋯", () => EditLayerAsync(layer)); DockPanel.SetDock(edit, Dock.Right); row.Children.Add(edit);
-            var visible = new CheckBox { IsChecked = layer.Visible, Content = layer.Name, Foreground = Brush.Parse(layer.Color) };
-            visible.IsCheckedChanged += (_, _) => model.Try(() => model.Editor.UpdateLayer(layer with { Visible = visible.IsChecked == true }));
-            row.Children.Add(visible); layers.Children.Add(row);
-        }
-        var active = new ComboBox
-        {
-            ItemsSource = model.Editor.Document.Layers.Select(l => l.Name).ToArray(),
-            SelectedIndex = Array.FindIndex(model.Editor.Document.Layers.ToArray(), l => l.Id == model.Editor.ActiveLayerId),
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        active.SelectionChanged += (_, _) => { if (active.SelectedIndex >= 0) model.Editor.ActiveLayerId = model.Editor.Document.Layers[active.SelectedIndex].Id; };
-        layers.Children.Add(new TextBlock { Text = "Camada para novos objetos", FontSize = 11 }); layers.Children.Add(active);
-    }
-    private void RefreshObjects()
-    {
-        var shapes = model.Editor.Document.Objects;
-        // Keep pointer targets alive when leaving a property field commits an edit.
-        if (!objectButtons.Keys.SequenceEqual(shapes.Select(shape => shape.Id)))
-        {
-            objects.Children.Clear(); objectButtons.Clear();
-            foreach (var shape in shapes) AddObjectRow(shape);
-        }
-        foreach (var shape in model.Editor.Document.Objects)
-        {
-            var (select, delete) = objectButtons[shape.Id]; select.Content = shape.Name;
-            select.Background = shape.Id == model.Editor.SelectedId ? Brush.Parse("#D7EAFF") : Brushes.Transparent;
-            Avalonia.Automation.AutomationProperties.SetName(delete, $"Excluir {shape.Name}");
-            ToolTip.SetTip(delete, $"Excluir {shape.Name}");
-        }
-        if (objects.Children.Count == 0) objects.Children.Add(new TextBlock { Text = "Crie seu primeiro objeto.", Foreground = Brushes.Gray });
-    }
-    private void AddObjectRow(GeometryObject shape)
-    {
-        var select = Button(shape.Name, () => { model.VertexIndex = 0; model.Editor.Select(shape.Id); return Task.CompletedTask; });
-        select.HorizontalAlignment = HorizontalAlignment.Stretch;
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var delete = DeleteButton(shape);
-        Grid.SetColumn(delete, 1); row.Children.Add(select); row.Children.Add(delete);
-        objects.Children.Add(row); objectButtons.Add(shape.Id, (select, delete));
-    }
-    private Button DeleteButton(GeometryObject shape)
-    {
-        var button = Button("", () => { model.Editor.Delete(shape.Id); return Task.CompletedTask; });
-        button.Name = $"DeleteObject_{shape.Id:N}";
-        button.Content = new Avalonia.Controls.Shapes.Path
-        {
-            Data = Geometry.Parse("M3,5 L13,5 M6,5 L6,3 L10,3 L10,5 M4,5 L5,15 L11,15 L12,5 M7,7 L7,12 M9,7 L9,12"),
-            Stroke = Brush.Parse("#8A3944"),
-            StrokeThickness = 1.5,
-            Width = 16,
-            Height = 18
-        };
-        Avalonia.Automation.AutomationProperties.SetName(button, $"Excluir {shape.Name}");
-        ToolTip.SetTip(button, $"Excluir {shape.Name}");
-        return button;
+        layers.Refresh(); properties.Refresh(); _ = SyncMapAsync();
     }
     private async Task SyncMapAsync()
     {
@@ -266,6 +208,7 @@ public sealed class MainWindow : Window
     }
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && layers.CancelDrag()) { e.Handled = true; return; }
         var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         if (control && e.Key == Key.S) { _ = RunAsync(() => SaveAsync(false)); e.Handled = true; }
         else if (control && e.Key == Key.O) { _ = RunAsync(OpenAsync); e.Handled = true; }
