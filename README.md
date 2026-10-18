@@ -170,7 +170,7 @@ The optional **Obstructions** multiselect accepts other polygons; click an item 
 
 *Configure the polygon, optional obstructions, endpoints, coverage width, and overlap before generating a path.*
 
-Generation runs in the background using `BoustrophedonDotnetWrapper` 0.1.3. The result is an editable path object in the polygon's layer, including the requested endpoints. Paths may revisit waypoints, are saved with the project, and support undo/redo as a single operation. Cancelling the dialog discards a pending result. Very dense requests are rejected when they would exceed 10,000 sweep lanes.
+Generation runs in the background using `BoustrophedonDotnetWrapper` 0.1.4. The result is an editable path object in the polygon's layer, including the requested endpoints. Paths may revisit waypoints, are saved with the project, and support undo/redo as a single operation. Cancelling the dialog discards a pending result. Very dense requests are rejected when they would exceed 10,000 sweep lanes.
 
 ![Generated coverage path selected inside a polygon, with its waypoints, layer entry, and editable properties](docs/images/coverage-path.png)
 
