@@ -81,6 +81,7 @@ public sealed partial class SmokeApplication : Application
             if (response?.Contains("true") == true) { ready = true; break; }
         }
         if (!ready) throw new InvalidOperationException("Globo não inicializou: " + await map.InvokeScript("document.body.innerText"));
+        await VerifyMapLanguageAsync(window, map);
         await VerifyMapCoverageMenuAsync(window, map, model);
         await VerifyMapWarningsAndShortcutsAsync(window, map, model);
         await VerifyMapAreaSelectionAsync(map, model);

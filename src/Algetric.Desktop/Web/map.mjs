@@ -1,8 +1,18 @@
 import {desiredMode, acceptState, objectsInScreenArea, keyboardCommand} from './bridge.mjs';
+import {mapText} from './localization.mjs';
 const notice=document.querySelector('#notice');
 let viewer,state,sequence=0,pending=false,morphing=false,draft=[],drag=null,area=null,providerId,mode='3D',mapMissing=false,pointerHeld=false;
 const C=globalThis.Cesium;
-function report(message){notice.textContent=message;}
+let language='pt-BR';
+const t=text=>mapText(text,language);
+function report(message){notice.textContent=t(message);}
+function updateLanguage(code){
+  if(language!==code)closePolygonMenu();
+  language=code;document.documentElement.lang=code;document.title=t('Algetric — Mapa');
+  const home=document.querySelector('#home'),cancel=document.querySelector('#cancel');
+  home.textContent=t('Origem');home.title=t('Ir para origem (Home)');
+  cancel.textContent=t('Cancelar');cancel.title=t('Cancelar (Esc)');
+}
 function geos(points){return points.map(p=>C.Cartesian3.fromDegrees(p.longitude,p.latitude));}
 function positionAt(screen){
   const hit=viewer.camera.pickEllipsoid(screen,viewer.scene.globe.ellipsoid);
@@ -26,11 +36,12 @@ function sync(next){
   if(reset){clearAreaSelection();sequence=Date.now()*1000;draft=[];drag=null;viewer.scene.completeMorph();viewer.scene.morphTo3D(0);mode='3D';morphing=false;}
   if(state?.tool!==next.tool){draft=[];closePolygonMenu();clearAreaSelection();}
   state=next;
+  updateLanguage(next.language??'pt-BR');
   viewer.scene.screenSpaceCameraController.enableRotate=next.tool!==0;
   viewer.scene.screenSpaceCameraController.enableTranslate=next.tool!==0;
   if(reset)viewer.camera.setView({destination:C.Cartesian3.fromDegrees(next.view.longitude,next.view.latitude,next.view.height)});
   configureProvider();render();
-  report(`${mode==='3D'?'Globo 3D':'Mapa 2D'} • ${next.status}${!next.provider?' • Configure um provedor de mapas.':mapMissing?' • Mapa base indisponível nesta área.':''}`);
+  report(`${t(mode==='3D'?'Globo 3D':'Mapa 2D')} • ${next.status}${!next.provider?' • '+t('Configure um provedor de mapas.'):mapMissing?' • '+t('Mapa base indisponível nesta área.'):''}`);
 }
 function configureProvider(){
   const id=state.provider?.id??null;if(id===providerId)return;providerId=id;mapMissing=false;
@@ -62,7 +73,7 @@ function render(){
   }
   const origin=state.origin;
   viewer.entities.add({id:'origin',position:C.Cartesian3.fromDegrees(origin.longitude,origin.latitude),
-    point:{pixelSize:6,color:C.Color.DARKSLATEGRAY},label:{text:'Origem',font:'12px sans-serif',pixelOffset:new C.Cartesian2(0,16),fillColor:C.Color.DARKSLATEGRAY}});
+    point:{pixelSize:6,color:C.Color.DARKSLATEGRAY},label:{text:t('Origem'),font:'12px sans-serif',pixelOffset:new C.Cartesian2(0,16),fillColor:C.Color.DARKSLATEGRAY}});
   viewer.scene.requestRender();
 }
 async function finish(){
@@ -125,7 +136,7 @@ function openPolygonMenu(event){
   if(!polygon)return;
   const menu=document.createElement('div');menu.id='polygon-menu';menu.setAttribute('role','menu');
   menu.style.cssText=`position:fixed;z-index:10;left:${Math.max(8,Math.min(event.clientX,innerWidth-250))}px;top:${Math.max(8,Math.min(event.clientY,innerHeight-50))}px;padding:4px;background:white;border:1px solid #bccddd;border-radius:5px;box-shadow:0 4px 16px #0003`;
-  const button=document.createElement('button');button.textContent='Gerar caminho de pontos…';button.setAttribute('role','menuitem');
+  const button=document.createElement('button');button.textContent=t('Gerar caminho de pontos…');button.setAttribute('role','menuitem');
   button.onclick=()=>{closePolygonMenu();void send('generatePath',{id:polygon.id});};
   menu.addEventListener('keydown',key=>{key.stopPropagation();if(key.key==='Escape'){closePolygonMenu();key.preventDefault();}});
   menu.append(button);document.body.append(menu);button.focus();
@@ -184,6 +195,7 @@ function wireEditing(){
   });
 }
 try{
+  const initialState=await(await fetch('state')).json();updateLanguage(initialState.language??'pt-BR');
   if(!C)throw new Error('Recursos Cesium ausentes. Execute npm ci e npm run build na pasta Web.');
   C.Ion.defaultAccessToken='';
   viewer=new C.Viewer('globe',{baseLayer:false,terrainProvider:new C.EllipsoidTerrainProvider(),
@@ -194,9 +206,9 @@ try{
   viewer.scene.backgroundColor=C.Color.fromCssColorString('#EEF3F8');
   viewer.scene.globe.enableLighting=false;
   globalThis.algetric={sync,finish,cancel,diagnostics:()=>({mode,morphing,pending,tool:state?.tool,providerId,mapMissing,tilesLoaded:viewer.scene.globe.tilesLoaded,objects:state?.objects.length,selectedIds:state?.selectedIds,areaSelecting:!!area,height:viewer.camera.positionCartographic.height,webgl:viewer.scene.context.webgl2,notice:notice.textContent})};
-  wireEditing();sync(await(await fetch('state')).json());
+  wireEditing();sync(initialState);
   viewer.camera.changed.addEventListener(transition);viewer.camera.percentageChanged=.05;
   viewer.camera.moveEnd.addEventListener(()=>{if(!morphing&&state)void send('camera',centerAndHeight());});
   document.querySelector('#home').onclick=()=>viewer.camera.flyTo({destination:C.Cartesian3.fromDegrees(state.origin.longitude,state.origin.latitude,30_000)});
   document.querySelector('#cancel').onclick=cancel;
-}catch(error){const box=document.querySelector('#error');box.style.display='block';box.textContent=`Não foi possível inicializar o globo.\n${error.message}\nVerifique WebGL e as dependências nativas do WebView.`;report('Globo indisponível');}
+}catch(error){const box=document.querySelector('#error');box.style.display='block';box.textContent=`${t('Não foi possível inicializar o globo.')}\n${t(error.message)}\n${t('Verifique WebGL e as dependências nativas do WebView.')}`;report('Globo indisponível');}

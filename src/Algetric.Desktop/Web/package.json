@@ -2,7 +2,7 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test --test-isolation=none bridge.test.mjs"
+    "test": "node --test --test-isolation=none bridge.test.mjs localization.test.mjs"
   },
   "dependencies": {
     "cesium": "1.135.0"
