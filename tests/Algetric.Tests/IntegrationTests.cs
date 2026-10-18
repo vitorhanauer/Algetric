@@ -10,7 +10,7 @@ public class IntegrationTests
     [Fact]
     public void GeographicEditsUpdateSharedDocumentAndCannotReplay()
     {
-        var model = new EditorViewModel(); model.SetTool(EditorTool.Point);
+        var model = new EditorViewModel(); model.Load(TestProjects.WithLayers().Document); model.SetTool(EditorTool.Point);
         using var snapshot = JsonDocument.Parse(model.MapState());
         var message = JsonSerializer.Serialize(new
         {

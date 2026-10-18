@@ -13,10 +13,7 @@ public sealed record ViewState(double CenterX = 150, double CenterY = 150, doubl
 public sealed record ProjectDocument(int Version, GeographicPoint Origin, ImmutableArray<Layer> Layers,
     ImmutableArray<GeometryObject> Objects, ViewState View, bool OriginLocked = false)
 {
-    public static ProjectDocument Empty() => new(1, new(-23.55, -46.63),
-        [new(Guid.NewGuid(), "Área de estudo", "#009CA6"),
-         new(Guid.NewGuid(), "Obstáculos", "#FF791F"),
-         new(Guid.NewGuid(), "Objetos", "#4141FF")], [], new());
+    public static ProjectDocument Empty() => new(1, new(-23.55, -46.63), [], [], new());
 }
 public interface ICoordinateTransform : IDisposable
 {

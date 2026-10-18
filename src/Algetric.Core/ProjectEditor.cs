@@ -9,21 +9,21 @@ public sealed class ProjectEditor
     private ProjectDocument saved;
     public ProjectDocument Document { get; private set; }
     public Guid? SelectedId { get; private set; }
-    public Guid ActiveLayerId { get; set; }
+    public Guid? ActiveLayerId { get; private set; }
     public bool CanUndo => undo.Count > 0;
     public bool CanRedo => redo.Count > 0;
     public bool IsDirty => Document != saved;
     public event Action? Changed;
     public event Action? ViewChanged;
 
-    public ProjectEditor() { Document = ProjectDocument.Empty(); saved = Document; ActiveLayerId = Document.Layers[0].Id; }
+    public ProjectEditor() { Document = ProjectDocument.Empty(); saved = Document; ActiveLayerId = Document.Layers.FirstOrDefault()?.Id; }
     public void Select(Guid? id) { SelectedId = id; Changed?.Invoke(); }
     public void MarkSaved() { saved = Document; Changed?.Invoke(); }
     public void Load(ProjectDocument document)
     {
         GeometryRules.ValidateDocument(document);
         Document = saved = document with { OriginLocked = document.OriginLocked || document.Objects.Length > 0 };
-        undo.Clear(); redo.Clear(); SelectedId = null; ActiveLayerId = document.Layers[0].Id; Changed?.Invoke();
+        undo.Clear(); redo.Clear(); SelectedId = null; ActiveLayerId = document.Layers.FirstOrDefault()?.Id; Changed?.Invoke();
     }
     public void SetOrigin(GeographicPoint origin)
     {
@@ -32,8 +32,9 @@ public sealed class ProjectEditor
     }
     public GeometryObject Add(ShapeKind kind, IEnumerable<LocalPoint> vertices)
     {
+        if (ActiveLayerId is not { } layerId) throw new InvalidOperationException("Crie uma camada pelo botão + antes de criar objetos.");
         var shape = new GeometryObject(Guid.NewGuid(), $"{Name(kind)} {Document.Objects.Length + 1}",
-            ActiveLayerId, kind, vertices.ToImmutableArray());
+            layerId, kind, vertices.ToImmutableArray());
         GeometryRules.Validate(shape);
         SelectedId = shape.Id; Commit(Document with { Objects = Document.Objects.Add(shape), OriginLocked = true });
         return shape;
@@ -100,7 +101,7 @@ public sealed class ProjectEditor
         target.Push(Document);
         Document = document with { OriginLocked = Document.OriginLocked || document.OriginLocked };
         if (!Document.Objects.Any(o => o.Id == SelectedId)) SelectedId = null;
-        if (!Document.Layers.Any(l => l.Id == ActiveLayerId)) ActiveLayerId = Document.Layers[0].Id;
+        if (!Document.Layers.Any(l => l.Id == ActiveLayerId)) ActiveLayerId = Document.Layers.FirstOrDefault()?.Id;
         Changed?.Invoke();
     }
     private void Commit(ProjectDocument next, Guid? activeLayerId = null)

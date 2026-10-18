@@ -43,6 +43,11 @@ public sealed partial class SmokeApplication : Application
     private static async Task RunAsync(MainWindow window)
     {
         var model = Field<EditorViewModel>(window, "model"); var map = Field<NativeWebView>(window, "map");
+        if (model.Editor.Document.Layers.Length != 0 || model.Editor.ActiveLayerId is not null)
+            throw new InvalidOperationException("New projects must start with no layers.");
+        model.Editor.AddLayer("Camada 1", "#009CA6");
+        model.Editor.AddLayer("Camada 2", "#FF791F");
+        model.Editor.SetActiveLayer(model.Editor.Document.Layers[0].Id);
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
         await VerifyPropertiesAsync(window, model);
         VerifyNavigation(window, model);

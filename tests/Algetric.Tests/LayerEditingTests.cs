@@ -8,7 +8,7 @@ public class LayerEditingTests
     [Fact]
     public void MovingAnObjectPreservesItsIdentityGeometrySelectionAndSupportsUndoRedo()
     {
-        var editor = new ProjectEditor();
+        var editor = TestProjects.WithLayers();
         var shape = editor.Add(ShapeKind.Point, [new(10, 20)]);
         var target = editor.Document.Layers[1].Id;
         editor.MoveObjectToLayer(shape.Id, target);
@@ -21,7 +21,7 @@ public class LayerEditingTests
     [Fact]
     public void InvalidAndUnchangedDestinationsLeaveTheDocumentAndHistoryUntouched()
     {
-        var editor = new ProjectEditor();
+        var editor = TestProjects.WithLayers();
         var shape = editor.Add(ShapeKind.Point, [new(10, 20)]);
         var before = editor.Document;
         Assert.Throws<ArgumentException>(() => editor.MoveObjectToLayer(shape.Id, Guid.NewGuid()));
@@ -33,7 +33,7 @@ public class LayerEditingTests
     [Fact]
     public void ChoosingAnActiveLayerDoesNotCreateAnUndoStep()
     {
-        var editor = new ProjectEditor(); var target = editor.Document.Layers[1].Id;
+        var editor = TestProjects.WithLayers(); var target = editor.Document.Layers[1].Id;
         editor.SetActiveLayer(target);
         Assert.False(editor.CanUndo); Assert.False(editor.IsDirty);
         var shape = editor.Add(ShapeKind.Point, [new(0, 0)]);

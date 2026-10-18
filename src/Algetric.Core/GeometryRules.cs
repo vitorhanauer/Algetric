@@ -50,7 +50,7 @@ public static class GeometryRules
     {
         if (document.Version != 1) throw new ArgumentException("Versão de projeto incompatível.");
         ValidateOrigin(document.Origin);
-        if (document.Layers.IsDefaultOrEmpty || document.Objects.IsDefault || document.View is null)
+        if (document.Layers.IsDefault || document.Objects.IsDefault || document.View is null)
             throw new ArgumentException("Projeto incompleto.");
         if (document.Layers.Select(l => l.Id).Distinct().Count() != document.Layers.Length
             || document.Objects.Select(o => o.Id).Distinct().Count() != document.Objects.Length)

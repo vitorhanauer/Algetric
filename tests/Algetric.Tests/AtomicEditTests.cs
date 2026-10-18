@@ -7,7 +7,7 @@ public class AtomicEditTests
     [Fact]
     public void PropertiesAreChangedWithOneUndoAndInvalidNamesDoNotMoveVertices()
     {
-        var editor = new ProjectEditor(); var shape = editor.Add(ShapeKind.Point, [new(1, 2)]);
+        var editor = TestProjects.WithLayers(); var shape = editor.Add(ShapeKind.Point, [new(1, 2)]);
         Assert.Throws<ArgumentException>(() => editor.UpdateObject(shape.Id, "", [new(5, 6)]));
         Assert.Equal(new LocalPoint(1, 2), editor.Document.Objects[0].Vertices[0]);
         editor.UpdateObject(shape.Id, "Novo", [new(5, 6)]); editor.Undo();
@@ -17,7 +17,7 @@ public class AtomicEditTests
     [Fact]
     public void RepeatedPropertyConfirmationDoesNotAddAnUndoStepOrClearRedo()
     {
-        var editor = new ProjectEditor();
+        var editor = TestProjects.WithLayers();
         var shape = editor.Add(ShapeKind.Point, [new(1, 2)]);
         editor.UpdateObject(shape.Id, "Renamed", [new(5, 6)]);
         editor.UpdateObject(shape.Id, "Renamed", [new(5, 6)]);
@@ -31,7 +31,7 @@ public class AtomicEditTests
     [Fact]
     public void DeletingARowPreservesOtherSelectionAndMissingRowsDoNotChangeHistory()
     {
-        var editor = new ProjectEditor();
+        var editor = TestProjects.WithLayers();
         var first = editor.Add(ShapeKind.Point, [new(1, 2)]);
         var second = editor.Add(ShapeKind.Point, [new(3, 4)]);
         editor.Delete(first.Id);
