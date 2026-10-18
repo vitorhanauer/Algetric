@@ -185,7 +185,7 @@ public sealed class MainWindow : Window
         client.DefaultRequestHeaders.Authorization = null;
         if (model.Provider is not null)
         {
-            var token = await new LinuxSecretStore().GetAsync(model.Provider.Id);
+            var token = await ProviderSecretStore.Create().GetAsync(model.Provider.Id);
             if (!string.IsNullOrEmpty(token)) client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
         await SyncMapAsync();

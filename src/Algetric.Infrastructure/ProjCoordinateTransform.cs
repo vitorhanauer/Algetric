@@ -9,14 +9,20 @@ public sealed class ProjCoordinateTransform : ICoordinateTransform
     private readonly object gate = new();
     private IntPtr context;
     private IntPtr projection;
+    static ProjCoordinateTransform() => ProjNativeRuntime.Register();
     public ProjCoordinateTransform(GeographicPoint origin)
     {
         GeometryRules.ValidateOrigin(origin);
         context = Native.proj_context_create();
-        var target = FormattableString.Invariant($"+proj=aeqd +lat_0={origin.Latitude} +lon_0={origin.Longitude} +datum=WGS84 +units=m +type=crs");
-        var raw = Native.proj_create_crs_to_crs(context, "EPSG:4326", target, IntPtr.Zero);
-        if (raw != IntPtr.Zero) { projection = Native.proj_normalize_for_visualization(context, raw); Native.proj_destroy(raw); }
-        if (projection == IntPtr.Zero) { Dispose(); throw new InvalidOperationException("Não foi possível inicializar PROJ."); }
+        try
+        {
+            ProjNativeRuntime.ConfigureDatabase(context);
+            var target = FormattableString.Invariant($"+proj=aeqd +lat_0={origin.Latitude} +lon_0={origin.Longitude} +datum=WGS84 +units=m +type=crs");
+            var raw = Native.proj_create_crs_to_crs(context, "EPSG:4326", target, IntPtr.Zero);
+            if (raw != IntPtr.Zero) { projection = Native.proj_normalize_for_visualization(context, raw); Native.proj_destroy(raw); }
+            if (projection == IntPtr.Zero) throw new InvalidOperationException("Não foi possível inicializar PROJ.");
+        }
+        catch { Dispose(); throw; }
     }
     public LocalPoint ToLocal(GeographicPoint point)
     {
@@ -56,11 +62,11 @@ public sealed class ProjCoordinateTransform : ICoordinateTransform
     private static class Native
     {
         [StructLayout(LayoutKind.Sequential)] internal struct Coordinate { public double X, Y, Z, T; }
-        [DllImport("libproj.so.25")] internal static extern IntPtr proj_context_create();
-        [DllImport("libproj.so.25")] internal static extern void proj_context_destroy(IntPtr context);
-        [DllImport("libproj.so.25")] internal static extern IntPtr proj_create_crs_to_crs(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string source, [MarshalAs(UnmanagedType.LPUTF8Str)] string target, IntPtr area);
-        [DllImport("libproj.so.25")] internal static extern IntPtr proj_normalize_for_visualization(IntPtr context, IntPtr projection);
-        [DllImport("libproj.so.25")] internal static extern void proj_destroy(IntPtr projection);
-        [DllImport("libproj.so.25")] internal static extern Coordinate proj_trans(IntPtr projection, int direction, Coordinate coordinate);
+        [DllImport(ProjNativeRuntime.LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr proj_context_create();
+        [DllImport(ProjNativeRuntime.LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern void proj_context_destroy(IntPtr context);
+        [DllImport(ProjNativeRuntime.LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr proj_create_crs_to_crs(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string source, [MarshalAs(UnmanagedType.LPUTF8Str)] string target, IntPtr area);
+        [DllImport(ProjNativeRuntime.LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr proj_normalize_for_visualization(IntPtr context, IntPtr projection);
+        [DllImport(ProjNativeRuntime.LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern void proj_destroy(IntPtr projection);
+        [DllImport(ProjNativeRuntime.LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern Coordinate proj_trans(IntPtr projection, int direction, Coordinate coordinate);
     }
 }

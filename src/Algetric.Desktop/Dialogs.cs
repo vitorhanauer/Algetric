@@ -69,7 +69,7 @@ internal static class Dialogs
             var value = new TileProvider(ProviderSettings.Identifier(template), name.Text ?? "", template,
                 checked((int)Parse(min)), checked((int)Parse(max)), attribution.Text ?? "", permission.IsChecked == true);
             value.Validate();
-            if (!string.IsNullOrEmpty(token.Text)) await new LinuxSecretStore().SetAsync(value.Id, token.Text);
+            if (!string.IsNullOrEmpty(token.Text)) await ProviderSecretStore.Create().SetAsync(value.Id, token.Text);
             await settings.SaveAsync(value);
         }); return await window.ShowDialog<bool>(owner);
     }

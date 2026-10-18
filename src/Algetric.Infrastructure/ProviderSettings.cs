@@ -23,7 +23,7 @@ public sealed class ProviderSettings(string directory)
     }
     public static string Identifier(string template) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(template)))[..16].ToLowerInvariant();
 }
-public sealed class LinuxSecretStore(string executable = "secret-tool")
+public sealed class LinuxSecretStore(string executable = "secret-tool") : IProviderSecretStore
 {
     public Task<string?> GetAsync(string provider) => RunAsync(["lookup", "application", "algetric", "provider", provider], null);
     public async Task SetAsync(string provider, string secret)

@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup Condition="'$(AlgetricProjRoot)' != '' and ('$(MSBuildProjectName)' == 'Algetric.Desktop' or '$(MSBuildProjectName)' == 'Algetric.Tests' or '$(MSBuildProjectName)' == 'Algetric.Smoke')">
+    <Content Include="$(AlgetricProjRoot)/bin/*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(AlgetricProjRoot)/share/proj/proj.db" Link="proj-data/proj.db" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
