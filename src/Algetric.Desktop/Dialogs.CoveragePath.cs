@@ -46,7 +46,7 @@ internal static partial class Dialogs
         var width = Field(first, "Largura de cobertura (m)", "10"); width.Name = "CoverageWidth";
         var overlap = Field(second, "Sobreposição (%)", "0"); overlap.Name = "CoverageOverlap";
         Grid.SetColumn(second, 1); row.Children.Add(first); row.Children.Add(second); inputs.Children.Add(row);
-        inputs.Children.Add(new TextBlock { Text = "Os pontos devem estar dentro do polígono ou na borda. Sobreposição de 0% a menos de 100%.", TextWrapping = TextWrapping.Wrap, FontSize = 12 });
+        inputs.Children.Add(new TextBlock { Text = "Os pontos podem estar dentro ou fora do polígono. Sobreposição de 0% a menos de 100%.", TextWrapping = TextWrapping.Wrap, FontSize = 12 });
         return (width, overlap);
     }
     private static void AddCoverageActions(StackPanel panel, StackPanel inputs, Window window, EditorViewModel model,

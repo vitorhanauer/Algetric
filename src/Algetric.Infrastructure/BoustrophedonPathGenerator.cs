@@ -13,6 +13,24 @@ public sealed class BoustrophedonPathGenerator : ICoveragePathGenerator
         var area = Validate(polygon, options);
         if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture != Architecture.X64)
             throw new PlatformNotSupportedException("A geração de caminhos deste pacote está disponível apenas no Linux x64.");
+        var interiorOptions = options with { Start = EntryPoint(area, options.Start), End = EntryPoint(area, options.End) };
+        var coverage = GenerateInterior(polygon, area, interiorOptions);
+        ValidateRoute(area, coverage);
+        var route = new List<LocalPoint>();
+        AppendPoint(route, options.Start);
+        foreach (var point in coverage) AppendPoint(route, point);
+        AppendPoint(route, options.End);
+        return route.ToArray();
+    }
+    private static LocalPoint EntryPoint(Geometry area, LocalPoint requested)
+    {
+        var point = new NetTopologySuite.Geometries.Point(requested.X, requested.Y);
+        if (area.Covers(point)) return requested;
+        var nearest = NetTopologySuite.Operation.Distance.DistanceOp.NearestPoints(area.Boundary, point)[0];
+        return new(nearest.X, nearest.Y);
+    }
+    private static List<LocalPoint> GenerateInterior(GeometryObject polygon, Geometry area, CoveragePathOptions options)
+    {
         var center = area.EnvelopeInternal.Centre;
         NativePoint Native(LocalPoint point) => new(point.X - center.X, point.Y - center.Y);
         var result = Boustrophedon.GenerateWaypoints(Native(options.Start), Native(options.End),
@@ -21,12 +39,15 @@ public sealed class BoustrophedonPathGenerator : ICoveragePathGenerator
         foreach (var point in result)
         {
             var local = new LocalPoint(point.X + center.X, point.Y + center.Y);
-            if (route.Count == 0 || route[^1] != local) route.Add(local);
+            AppendPoint(route, local);
         }
         if (route.Count < 2) throw new InvalidOperationException("Não foi possível gerar um caminho para esta área.");
         route[0] = options.Start; route[^1] = options.End;
-        ValidateRoute(area, route);
-        return route.ToArray();
+        return route;
+    }
+    private static void AppendPoint(List<LocalPoint> route, LocalPoint point)
+    {
+        if (route.Count == 0 || route[^1] != point) route.Add(point);
     }
     private static Geometry Validate(GeometryObject polygon, CoveragePathOptions options)
     {
@@ -37,16 +58,16 @@ public sealed class BoustrophedonPathGenerator : ICoveragePathGenerator
         if (!double.IsFinite(options.OverlapPercent) || options.OverlapPercent < 0 || options.OverlapPercent >= 100)
             throw new ArgumentException("A sobreposição deve ser de 0% a menos de 100%.");
         var area = GeometryRules.ToGeometry(polygon);
-        ValidateEndpoint(area, options.Start, "inicial"); ValidateEndpoint(area, options.End, "final");
+        ValidateEndpoint(options.Start, "inicial"); ValidateEndpoint(options.End, "final");
         var spacing = options.Width * (1 - options.OverlapPercent / 100);
         if (spacing <= 0 || area.EnvelopeInternal.Width / spacing > 10_000)
             throw new ArgumentException("O caminho teria faixas demais. Aumente a largura ou reduza a sobreposição.");
         return area;
     }
-    private static void ValidateEndpoint(Geometry area, LocalPoint point, string label)
+    private static void ValidateEndpoint(LocalPoint point, string label)
     {
-        if (!double.IsFinite(point.X) || !double.IsFinite(point.Y) || !area.Covers(new NetTopologySuite.Geometries.Point(point.X, point.Y)))
-            throw new ArgumentException($"O ponto {label} deve estar dentro do polígono ou na sua borda.");
+        if (!double.IsFinite(point.X) || !double.IsFinite(point.Y) || Math.Sqrt(point.X * point.X + point.Y * point.Y) > 50_000)
+            throw new ArgumentException($"O ponto {label} deve ter coordenadas finitas e estar a até 50 km da origem.");
     }
     private static void ValidateRoute(Geometry area, List<LocalPoint> route)
     {
