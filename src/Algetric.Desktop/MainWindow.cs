@@ -17,7 +17,7 @@ public sealed class MainWindow : Window
     private readonly CartesianCanvas canvas;
     private readonly StackPanel layers = new() { Spacing = 5 };
     private readonly StackPanel objects = new() { Spacing = 4 };
-    private readonly StackPanel properties = new() { Spacing = 8 };
+    private readonly ObjectPropertiesPanel properties;
     private readonly TextBlock status = new() { Margin = new Thickness(12, 6) };
     private readonly NativeWebView map = new();
     private readonly HttpClient client = new() { Timeout = TimeSpan.FromSeconds(30) };
@@ -28,6 +28,9 @@ public sealed class MainWindow : Window
     private bool mapReady;
     private bool closingApproved;
     private readonly List<(Button Button, EditorTool Tool)> tools = [];
+    private readonly Dictionary<Guid, (Button Select, Button Delete)> objectButtons = [];
+    private Layer[] displayedLayers = [];
+    private Guid displayedActiveLayer;
     public MainWindow(string? storageDirectory = null)
     {
         Width = 1380; Height = 880; MinWidth = 940; MinHeight = 620;
@@ -35,6 +38,7 @@ public sealed class MainWindow : Window
         Directory.CreateDirectory(dataDirectory);
         tiles = new(Path.Combine(dataDirectory, "maps.sqlite")); settings = new(dataDirectory);
         canvas = new(model);
+        properties = new(model, canvas.InvalidateVisual);
         server = new(Path.Combine(AppContext.BaseDirectory, "Web"), tiles, client);
         server.GetStateAsync = async () => await Dispatcher.UIThread.InvokeAsync(() => { mapReady = true; return model.MapState(); });
         server.HandleMessageAsync = async json => await Dispatcher.UIThread.InvokeAsync(() => model.HandleMessage(json));
@@ -112,10 +116,12 @@ public sealed class MainWindow : Window
     {
         Title = model.Title; status.Text = model.Status;
         foreach (var (button, tool) in tools) button.Background = model.Tool == tool ? Brush.Parse("#D7F1FB") : Brushes.Transparent;
-        RefreshLayers(); RefreshObjects(); RefreshProperties(); _ = SyncMapAsync();
+        RefreshLayers(); RefreshObjects(); properties.Refresh(); _ = SyncMapAsync();
     }
     private void RefreshLayers()
     {
+        if (displayedLayers.SequenceEqual(model.Editor.Document.Layers) && displayedActiveLayer == model.Editor.ActiveLayerId) return;
+        displayedLayers = model.Editor.Document.Layers.ToArray(); displayedActiveLayer = model.Editor.ActiveLayerId;
         layers.Children.Clear();
         foreach (var layer in model.Editor.Document.Layers)
         {
@@ -135,43 +141,46 @@ public sealed class MainWindow : Window
     }
     private void RefreshObjects()
     {
-        objects.Children.Clear();
+        var shapes = model.Editor.Document.Objects;
+        // Keep pointer targets alive when leaving a property field commits an edit.
+        if (!objectButtons.Keys.SequenceEqual(shapes.Select(shape => shape.Id)))
+        {
+            objects.Children.Clear(); objectButtons.Clear();
+            foreach (var shape in shapes) AddObjectRow(shape);
+        }
         foreach (var shape in model.Editor.Document.Objects)
         {
-            var button = Button(shape.Name, () => { model.VertexIndex = 0; model.Editor.Select(shape.Id); return Task.CompletedTask; });
-            button.HorizontalAlignment = HorizontalAlignment.Stretch;
-            button.Background = shape.Id == model.Editor.SelectedId ? Brush.Parse("#D7EAFF") : Brushes.Transparent;
-            objects.Children.Add(button);
+            var (select, delete) = objectButtons[shape.Id]; select.Content = shape.Name;
+            select.Background = shape.Id == model.Editor.SelectedId ? Brush.Parse("#D7EAFF") : Brushes.Transparent;
+            Avalonia.Automation.AutomationProperties.SetName(delete, $"Excluir {shape.Name}");
+            ToolTip.SetTip(delete, $"Excluir {shape.Name}");
         }
         if (objects.Children.Count == 0) objects.Children.Add(new TextBlock { Text = "Crie seu primeiro objeto.", Foreground = Brushes.Gray });
     }
-    private void RefreshProperties()
+    private void AddObjectRow(GeometryObject shape)
     {
-        properties.Children.Clear(); if (model.Selected is not { } shape) return;
-        var name = Dialogs.Field(properties, "Nome", shape.Name);
-        var vertex = new ComboBox
+        var select = Button(shape.Name, () => { model.VertexIndex = 0; model.Editor.Select(shape.Id); return Task.CompletedTask; });
+        select.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var delete = DeleteButton(shape);
+        Grid.SetColumn(delete, 1); row.Children.Add(select); row.Children.Add(delete);
+        objects.Children.Add(row); objectButtons.Add(shape.Id, (select, delete));
+    }
+    private Button DeleteButton(GeometryObject shape)
+    {
+        var button = Button("", () => { model.Editor.Delete(shape.Id); return Task.CompletedTask; });
+        button.Name = $"DeleteObject_{shape.Id:N}";
+        button.Content = new Avalonia.Controls.Shapes.Path
         {
-            ItemsSource = Enumerable.Range(0, shape.Vertices.Length).Select(i => $"Vértice {i + 1}").ToArray(),
-            SelectedIndex = Math.Clamp(model.VertexIndex, 0, shape.Vertices.Length - 1)
+            Data = Geometry.Parse("M3,5 L13,5 M6,5 L6,3 L10,3 L10,5 M4,5 L5,15 L11,15 L12,5 M7,7 L7,12 M9,7 L9,12"),
+            Stroke = Brush.Parse("#8A3944"),
+            StrokeThickness = 1.5,
+            Width = 16,
+            Height = 18
         };
-        properties.Children.Add(vertex); var p = shape.Vertices[vertex.SelectedIndex];
-        var x = Dialogs.Field(properties, "X (m)", Dialogs.Number(p.X)); var y = Dialogs.Field(properties, "Y (m)", Dialogs.Number(p.Y));
-        vertex.SelectionChanged += (_, _) =>
-        {
-            if (vertex.SelectedIndex < 0) return; model.VertexIndex = vertex.SelectedIndex;
-            var selected = shape.Vertices[vertex.SelectedIndex]; x.Text = Dialogs.Number(selected.X); y.Text = Dialogs.Number(selected.Y); canvas.InvalidateVisual();
-        };
-        properties.Children.Add(Button("Aplicar", () =>
-        {
-            model.Try(() =>
-            {
-                var points = shape.Vertices.ToArray(); points[vertex.SelectedIndex] = new(Dialogs.Parse(x), Dialogs.Parse(y));
-                model.UpdateObject(shape.Id, name.Text ?? "", points);
-            }); return Task.CompletedTask;
-        }));
-        var measure = GeometryRules.Measure(shape);
-        properties.Children.Add(new TextBlock { Text = $"Comprimento/perímetro: {measure.Length:N2} m\nÁrea: {measure.Area:N2} m²\nMedidas planimétricas", TextWrapping = TextWrapping.Wrap, FontSize = 12 });
-        properties.Children.Add(Button("Excluir", () => { model.Editor.DeleteSelected(); return Task.CompletedTask; }));
+        Avalonia.Automation.AutomationProperties.SetName(button, $"Excluir {shape.Name}");
+        ToolTip.SetTip(button, $"Excluir {shape.Name}");
+        return button;
     }
     private async Task SyncMapAsync()
     {

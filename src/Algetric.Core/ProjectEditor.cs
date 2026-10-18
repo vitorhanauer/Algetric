@@ -52,12 +52,19 @@ public sealed class ProjectEditor
         if (index < 0) throw new ArgumentException("Objeto inexistente.");
         var shape = Document.Objects[index] with { Name = name.Trim(), Vertices = vertices.ToImmutableArray() };
         GeometryRules.Validate(shape);
+        if (shape.Name == Document.Objects[index].Name && shape.Vertices.SequenceEqual(Document.Objects[index].Vertices)) return;
         Commit(Document with { Objects = Document.Objects.SetItem(index, shape) });
     }
     public void DeleteSelected()
     {
         if (SelectedId is not { } id) return;
-        SelectedId = null; Commit(Document with { Objects = Document.Objects.RemoveAll(o => o.Id == id) });
+        Delete(id);
+    }
+    public void Delete(Guid id)
+    {
+        if (!Document.Objects.Any(o => o.Id == id)) return;
+        if (SelectedId == id) SelectedId = null;
+        Commit(Document with { Objects = Document.Objects.RemoveAll(o => o.Id == id) });
     }
     public void AddLayer(string name, string color)
     {

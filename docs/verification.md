@@ -8,6 +8,10 @@ Offline tests simulate HTTP 429 responses, interrupted downloads and resumption 
 
 JavaScript tests verify distinct transition thresholds and rejection of stale snapshots. The smoke test uses a real WebView: it opens the globe, checks WebGL, renders a polygon, zooms into 2D, loads a local SQLite raster tile, creates a point through a Cesium pointer event, undoes and redoes the edit, zooms back out to 3D, and saves and reopens the project. The Cartesian canvas is also rendered to PNG for visual inspection.
 
+## Object properties checks
+
+Run `dotnet run --project tests/Algetric.Smoke -- --properties-only` in a graphical session to check the compact sidebar. This checks that name/vertex and X/Y share their respective rows, Enter and focus loss save edits, moving between fields preserves focus, repeated confirmation creates only one undo operation, renaming works without an Apply button, invalid coordinates preserve the geometry, edits target the selected vertex, and inline deletion removes the intended object and supports undo. It writes `artifacts/smoke/cartesian.png` for visual inspection. These checks also run before the full WebView smoke scenario.
+
 ## Desktop installation tests
 
 Run `python3 -m unittest discover -s tests/installation -v`. Tests install a simulated package into temporary user directories, validate the desktop entry, and launch it through `gio` when available. They cover paths with spaces and special characters, independence from the original package directory, upgrades, uninstalling without deleting user data, missing assets, and refusing to overwrite unrelated launchers. The suite contains five tests, including first-run source setup and argument forwarding. Python is needed for these tests only; installation itself uses Bash and standard Linux utilities. The real published package was also installed into temporary user directories, checked with `desktop-file-validate` and `--diagnostics`, and uninstalled while preserving user data.

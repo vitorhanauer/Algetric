@@ -3,6 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Avalonia.Themes.Fluent;
 using Algetric.Core;
 using Algetric.Desktop;
@@ -41,11 +44,13 @@ public sealed class SmokeApplication : Application
     {
         var model = Field<EditorViewModel>(window, "model"); var map = Field<NativeWebView>(window, "map");
         model.Add(ShapeKind.Polygon, [new(0, 0), new(100, 0), new(100, 100), new(0, 100)]);
+        await VerifyPropertiesAsync(window, model);
         model.Editor.MarkSaved();
         await Task.Delay(1000);
         Directory.CreateDirectory("artifacts/smoke");
         using (var bitmap = new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width, (int)window.Bounds.Height)))
         { bitmap.Render(window); bitmap.Save("artifacts/smoke/cartesian.png", PngBitmapEncoderOptions.Default); }
+        if (((IClassicDesktopStyleApplicationLifetime)Current!.ApplicationLifetime!).Args?.Contains("--properties-only") == true) return;
         var root = (DockPanel)window.Content!;
         ((TabControl)root.Children.Last()).SelectedIndex = 1;
         var ready = false;
@@ -125,6 +130,46 @@ public sealed class SmokeApplication : Application
         await File.WriteAllTextAsync("artifacts/smoke/map.txt", await map.InvokeScript("document.body.innerText"));
         // The native WebView is captured separately during manual desktop verification.
         Console.WriteLine("SMOKE PASS: UI, WebGL, offline raster, synchronization, 3D↔2D, map editing, undo/redo and persistence.");
+    }
+    private static async Task VerifyPropertiesAsync(MainWindow window, EditorViewModel model)
+    {
+        await Task.Delay(200);
+        T Control<T>(string name) where T : Control => window.GetVisualDescendants().OfType<T>().Single(c => c.Name == name);
+        void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        void Enter(TextBox field) => field.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+        var original = model.Editor.Document;
+        var shape = model.Selected!;
+        var x = Control<TextBox>("PropertyX"); var y = Control<TextBox>("PropertyY");
+        var name = Control<TextBox>("PropertyName"); var vertex = Control<ComboBox>("PropertyVertex");
+        Check(x.TranslatePoint(default, window)!.Value.Y == y.TranslatePoint(default, window)!.Value.Y, "X and Y must share a row.");
+        Check(name.TranslatePoint(default, window)!.Value.Y == vertex.TranslatePoint(default, window)!.Value.Y, "Name and vertex must share a row.");
+        var deleteTarget = Control<Button>($"DeleteObject_{shape.Id:N}");
+        x.Focus(); x.Text = "12,5"; Enter(x);
+        Check(ReferenceEquals(deleteTarget, Control<Button>($"DeleteObject_{shape.Id:N}")), "Confirmation replaced the inline delete target.");
+        Check(model.Selected!.Vertices[0].X == 12.5, "Enter did not commit X.");
+        Check(x.IsFocused, "Enter replaced the focused field.");
+        y.Focus(); await Task.Delay(50);
+        Check(y.IsFocused, "Blur prevented focus moving from X to Y.");
+        model.Editor.Undo();
+        Check(model.Selected!.Vertices[0] == shape.Vertices[0], "Enter and blur added duplicate undo operations.");
+        y.Text = "15"; name.Focus(); await Task.Delay(50);
+        Check(model.Selected!.Vertices[0].Y == 15, "Blur did not commit Y.");
+        name.Text = "Renamed"; vertex.Focus(); await Task.Delay(50);
+        Check(model.Selected!.Name == "Renamed", "Name was not saved on blur.");
+        x.Focus(); x.Text = "invalid"; Enter(x);
+        Check(model.Selected!.Vertices[0].X == 0, "Invalid text changed the geometry.");
+        x.Text = "20"; Enter(x); vertex.SelectedIndex = 1;
+        Check(x.Text == "100", "Vertex switch did not refresh coordinates.");
+        x.Focus(); x.Text = "110"; name.Focus(); await Task.Delay(50);
+        Check(model.Selected!.Vertices[1].X == 110 && model.Selected.Vertices[0].X == 20, "Vertex edit targeted the wrong vertex.");
+        var second = model.Editor.Add(ShapeKind.Point, [new(5, 5)]);
+        var delete = Control<Button>($"DeleteObject_{shape.Id:N}");
+        delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(model.Editor.Document.Objects.Length == 1 && model.Selected!.Id == second.Id, "Inline deletion removed or deselected the wrong object.");
+        model.Editor.Undo();
+        Check(model.Editor.Document.Objects.Length == 2, "Inline deletion cannot be undone.");
+        model.Load(original); model.Editor.Select(shape.Id);
+        Console.WriteLine("PROPERTIES PASS: compact layout, Enter, blur, focus, rename, validation, vertex selection and inline deletion.");
     }
     private static T Field<T>(object value, string name) => (T)value.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(value)!;
 }
