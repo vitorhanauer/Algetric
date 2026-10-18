@@ -2,6 +2,63 @@
 
 Desktop editor for local geometries with a Cartesian plane and an Earth globe, built with .NET 10 and Avalonia for Linux x64. The interface follows `mockups/example.png`.
 
+## Install as a desktop application
+
+Install the native dependencies first. A published package includes the .NET runtime and does not require the .NET SDK or Node.js.
+
+Arch Linux:
+
+```sh
+sudo pacman -S --needed proj gtk3 webkit2gtk-4.1 libsecret
+```
+
+Ubuntu 24.04:
+
+```sh
+sudo apt-get install libproj25 proj-data libgtk-3-0t64 libwebkit2gtk-4.1-0 libsecret-tools libgl1-mesa-dri
+```
+
+From this repository, install for your current user with:
+
+```sh
+bash scripts/install-linux.sh
+```
+
+This uses the published application in `artifacts/linux-x64`, building it first if it is missing. Building requires the source prerequisites below. To install an extracted Linux package instead, run this inside its directory:
+
+```sh
+bash install.sh
+```
+
+Run the installer without `sudo`. It copies the application into your user data directory, adds an icon and an **Algetric** entry to your applications menu, and creates `~/.local/bin/algetric`. You can open Algetric from the menu, pin it to your desktop environment's favorites, or run:
+
+```sh
+~/.local/bin/algetric
+```
+
+If `~/.local/bin` is already on your `PATH`, `algetric` works directly. The menu shortcut works independently of `PATH`. Installation copies all runtime and web assets, so the repository or extracted package can subsequently be moved or removed.
+
+Close Algetric before updating. From the repository, build the latest code and reinstall:
+
+```sh
+bash scripts/publish-linux.sh
+bash scripts/install-linux.sh
+```
+
+From an updated extracted package, rerun `bash install.sh`. To uninstall from the repository:
+
+```sh
+bash scripts/uninstall-linux.sh
+```
+
+Without the repository, use the installed uninstaller:
+
+```sh
+bash "${XDG_DATA_HOME:-$HOME/.local/share}/algetric/application/uninstall.sh"
+```
+
+Uninstalling removes the application, menu entry, icon, and command. Projects, settings, credentials, and downloaded maps are preserved. Installation honors `XDG_DATA_HOME`; `ALGETRIC_BIN_DIR` can override the command directory, which defaults to `~/.local/bin`.
+
 ## Run from source
 
 Requirements: the SDK specified in `global.json`, Node.js 24, PROJ and its database, WebKitGTK 4.1, GTK3, and WebGL acceleration. An X11 session or a Wayland session with XWayland must be available. Bearer credentials require `secret-tool` and an unlocked Secret Service.
@@ -17,6 +74,14 @@ Ubuntu 24.04 (also install the .NET SDK and Node.js):
 ```sh
 sudo apt-get install libproj25 proj-data libgtk-3-0t64 libwebkit2gtk-4.1-0 libsecret-tools libgl1-mesa-dri
 ```
+
+Run from the repository with one command:
+
+```sh
+bash scripts/run.sh
+```
+
+This prepares Cesium assets on the first run and starts the application through `dotnet run`. Arguments are forwarded, for example `bash scripts/run.sh --diagnostics`. You can still run the individual setup commands:
 
 ```sh
 npm ci --ignore-scripts --prefix src/Algetric.Desktop/Web
@@ -55,6 +120,7 @@ Configuration and maps are stored in `~/.local/share/algetric`, or the data dire
 ## Verification and distribution
 
 ```sh
+python3 -m unittest discover -s tests/installation -v
 dotnet test tests/Algetric.Tests
 npm test --prefix src/Algetric.Desktop/Web
 dotnet run --project tests/Algetric.Smoke
@@ -64,6 +130,6 @@ bash scripts/publish-linux.sh
 
 The smoke test opens a real window and checks WebGL, synchronization, globe/map transitions, geographic editing, history, and persistence. It writes results to `artifacts/smoke`. In a headless environment, use `dbus-run-session -- xvfb-run -a` with Mesa. Unit tests use simulated HTTP providers and do not access external map services.
 
-The final package is written to `artifacts/algetric-linux-x64.tar.gz`. Extract it and run `./Algetric.Desktop`. The package includes the .NET runtime; PROJ and WebKitGTK remain native system dependencies. See the [architecture](docs/architecture.md), [verification](docs/verification.md), and [license notices](THIRD_PARTY_NOTICES.md).
+The final package is written to `artifacts/algetric-linux-x64.tar.gz`. Extract it and run `bash install.sh` to add it to your applications menu, or run `./Algetric.Desktop` directly. The package includes the .NET runtime; PROJ and WebKitGTK remain native system dependencies. See the [architecture](docs/architecture.md), [verification](docs/verification.md), and [license notices](THIRD_PARTY_NOTICES.md).
 
 Coverage algorithms, obstacle avoidance, 3D terrain, polygons with holes, and advanced GIS formats are outside the scope of this MVP.

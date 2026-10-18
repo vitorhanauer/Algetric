@@ -8,6 +8,10 @@ Offline tests simulate HTTP 429 responses, interrupted downloads and resumption 
 
 JavaScript tests verify distinct transition thresholds and rejection of stale snapshots. The smoke test uses a real WebView: it opens the globe, checks WebGL, renders a polygon, zooms into 2D, loads a local SQLite raster tile, creates a point through a Cesium pointer event, undoes and redoes the edit, zooms back out to 3D, and saves and reopens the project. The Cartesian canvas is also rendered to PNG for visual inspection.
 
+## Desktop installation tests
+
+Run `python3 -m unittest discover -s tests/installation -v`. Tests install a simulated package into temporary user directories, validate the desktop entry, and launch it through `gio` when available. They cover paths with spaces and special characters, independence from the original package directory, upgrades, uninstalling without deleting user data, missing assets, and refusing to overwrite unrelated launchers. The suite contains five tests, including first-run source setup and argument forwarding. Python is needed for these tests only; installation itself uses Bash and standard Linux utilities. The real published package was also installed into temporary user directories, checked with `desktop-file-validate` and `--diagnostics`, and uninstalled while preserving user data.
+
 ## Reproduce in an isolated Ubuntu environment
 
 After preparing the Cesium assets:
