@@ -180,5 +180,5 @@ try{
   viewer.camera.changed.addEventListener(transition);viewer.camera.percentageChanged=.05;
   viewer.camera.moveEnd.addEventListener(()=>{if(!morphing&&state)void send('camera',centerAndHeight());});
   document.querySelector('#home').onclick=()=>viewer.camera.flyTo({destination:C.Cartesian3.fromDegrees(state.origin.longitude,state.origin.latitude,30_000)});
-  document.querySelector('#finish').onclick=()=>void finish();document.querySelector('#cancel').onclick=cancel;
+  document.querySelector('#cancel').onclick=cancel;
 }catch(error){const box=document.querySelector('#error');box.style.display='block';box.textContent=`Não foi possível inicializar o globo.\n${error.message}\nVerifique WebGL e as dependências nativas do WebView.`;report('Globo indisponível');}

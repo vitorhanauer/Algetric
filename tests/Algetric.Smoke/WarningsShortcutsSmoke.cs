@@ -55,7 +55,15 @@ public sealed partial class SmokeApplication
         var popup = window.GetLogicalDescendants().OfType<Popup>().Single(control => control.Name == "WarningToast");
         for (var attempt = 0; attempt < 20 && !popup.IsOpen; attempt++) await Task.Delay(50);
         CheckLayer(popup.IsOpen && model.Editor.Document.Objects.Length == 0, "Creation on the map without layers must show the same popup: " + await map.InvokeScript("JSON.stringify(window.algetric.diagnostics())"));
+        CheckLayer((await map.InvokeScript("document.getElementById('finish')===null"))?.Contains("true") == true, "The map must not show a Finish button.");
         popup.IsOpen = false; model.Load(original); model.Editor.Select(original.Objects[0].Id); await Task.Delay(150);
         Console.WriteLine("MAP WARNING PASS: native popup for missing layers.");
+    }
+    private static async Task VerifyToolShortcutsAsync(MainWindow window, EditorViewModel model)
+    {
+        var canvas = Field<CartesianCanvas>(window, "canvas");
+        var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
+        CheckLayer(!buttons.Any(button => Avalonia.Automation.AutomationProperties.GetName(button) == "Concluir"), "The Finish button must be removed.");
+        await Task.CompletedTask;
     }
 }

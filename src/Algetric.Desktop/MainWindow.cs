@@ -150,7 +150,6 @@ public sealed class MainWindow : Window
             if (tool == EditorTool.Move) ToolTip.SetTip(button, "Mover o plano • segure Espaço para ativar temporariamente");
             tools.Add((button, tool)); panel.Children.Add(button);
         }
-        panel.Children.Add(ToolbarButton("✓", "Concluir", () => { canvas.FinishDraft(); _ = map.InvokeScript("window.algetric?.finish()"); return Task.CompletedTask; }));
         panel.Children.Add(ToolbarButton("↶", "Desfazer", () => { model.Editor.Undo(); return Task.CompletedTask; }));
         panel.Children.Add(ToolbarButton("↷", "Refazer", () => { model.Editor.Redo(); return Task.CompletedTask; })); return panel;
     }
