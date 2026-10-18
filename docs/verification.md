@@ -2,6 +2,8 @@
 
 ## Automated tests
 
+Run `python3 -m unittest discover -s tests/build -v` with the pinned SDK to check apphost selection. These tests evaluate both executable projects with a simulated `arch-x64` SDK and require the portable `linux-x64` apphost. Explicit publishing runtimes, apphost overrides, and Windows defaults remain unchanged. No package restore is needed for these checks.
+
 The .NET suite covers invalid polygons, measurements, atomic drag edits, history, coordinate bounds, PROJ against a known reference, and coordinate round trips with less than 1 cm of error. It also covers saving and reopening projects, preserving an existing valid file after a failed save, persistent origin locking, and replayed or stale messages.
 
 Offline tests simulate HTTP 429 responses, interrupted downloads and resumption after reopening the cache, insufficient disk space, removal of regions with shared tiles, and serving local tiles while the network is unavailable. Insecure providers and URLs containing credentials are rejected. Public providers can work without secret-tool; storing a credential requires the service.

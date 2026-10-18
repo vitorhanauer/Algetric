@@ -116,6 +116,8 @@ Ubuntu 24.04 (also install the .NET SDK and Node.js):
 sudo apt-get install libproj25 proj-data libgtk-3-0t64 libwebkit2gtk-4.1-0 libsecret-tools libgl1-mesa-dri
 ```
 
+On Arch Linux, a distribution-provided SDK can report `arch-x64`. The shared build configuration selects the portable Linux apphost, avoiding a lookup for the nonexistent NuGet package `Microsoft.NETCore.App.Host.arch-x64`. No script flags or manual SDK changes are needed.
+
 Run from the repository with one command:
 
 ```sh

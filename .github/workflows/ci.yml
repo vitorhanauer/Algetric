@@ -17,6 +17,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-0 libproj25 proj-data libsecret-tools xvfb xauth libgl1-mesa-dri desktop-file-utils libglib2.0-bin python3
       - name: Desktop installation tests
         run: python3 -m unittest discover -s tests/installation -v
+      - name: Portable apphost regression tests
+        run: python3 -m unittest discover -s tests/build -v
       - run: npm ci --ignore-scripts --prefix src/Algetric.Desktop/Web
       - run: npm run build --prefix src/Algetric.Desktop/Web
       - run: npm test --prefix src/Algetric.Desktop/Web

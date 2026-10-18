@@ -1,4 +1,8 @@
 <Project>
+  <!-- Distribution SDKs can report arch-x64; NuGet apphosts use portable Linux RIDs. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == '' and $(NETCoreSdkPortableRuntimeIdentifier.StartsWith('linux-'))">
+    <DefaultAppHostRuntimeIdentifier Condition="'$(DefaultAppHostRuntimeIdentifier)' == '' or '$(DefaultAppHostRuntimeIdentifier)' == '$(NETCoreSdkRuntimeIdentifier)'">$(NETCoreSdkPortableRuntimeIdentifier)</DefaultAppHostRuntimeIdentifier>
+  </PropertyGroup>
   <ItemGroup Condition="'$(AlgetricProjRoot)' != '' and ('$(MSBuildProjectName)' == 'Algetric.Desktop' or '$(MSBuildProjectName)' == 'Algetric.Tests' or '$(MSBuildProjectName)' == 'Algetric.Smoke')">
     <Content Include="$(AlgetricProjRoot)/bin/*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="$(AlgetricProjRoot)/share/proj/proj.db" Link="proj-data/proj.db" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
