@@ -47,15 +47,9 @@ internal static class Dialogs
         var panel = new StackPanel { Spacing = 8, Margin = new Thickness(20) };
         var name = Field(panel, "Nome", layer?.Name ?? "Nova camada"); name.Name = "LayerName";
         panel.Children.Add(new TextBlock { Text = "Cor", FontSize = 12 });
-        var color = new ColorView
-        {
-            Name = "LayerColorPicker", Color = Color.Parse(layer?.Color ?? "#009CA6"),
-            ColorSpectrumShape = ColorSpectrumShape.Ring, ColorSpectrumComponents = ColorSpectrumComponents.HueSaturation,
-            IsAlphaEnabled = false, IsAlphaVisible = false, IsColorPaletteVisible = false,
-            IsColorModelVisible = false, IsColorComponentsVisible = false, IsHexInputVisible = false, IsAccentColorsVisible = false
-        };
+        var color = LayerColorPicker.Create(layer?.Color ?? "#009CA6");
         panel.Children.Add(color);
-        panel.Children.Add(new TextBlock { Text = "Escolha na roda; ajuste o brilho na barra.", FontSize = 12 });
+        panel.Children.Add(new TextBlock { Text = "Escolha no quadrado; ajuste o brilho na barra.", FontSize = 12 });
         var window = Window("Camada", panel);
         AddSubmit(panel, window, () =>
         {

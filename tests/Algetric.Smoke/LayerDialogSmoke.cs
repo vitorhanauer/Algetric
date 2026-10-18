@@ -44,14 +44,14 @@ public sealed partial class SmokeApplication
         var original = model.Editor.Document; var layer = original.Layers[0];
         var dialog = await OpenLayerEditorAsync(window, layer.Id);
         var picker = dialog.GetVisualDescendants().OfType<ColorView>().Single(control => control.Name == "LayerColorPicker");
-        CheckLayer(picker.Color == Color.Parse(layer.Color) && !picker.IsAlphaEnabled && !picker.IsHexInputVisible, "The wheel must load the existing opaque layer color without a hex field.");
-        await VerifyWheelInteractionAsync(dialog, picker);
+        CheckLayer(picker.Color == Color.Parse(layer.Color) && !picker.IsAlphaEnabled && !picker.IsHexInputVisible, "The square must load the existing opaque layer color without a hex field.");
+        await VerifySquareInteractionAsync(dialog, picker);
         dialog.Close(); CheckLayer(ReferenceEquals(original, model.Editor.Document), "Closing the color dialog must discard edits.");
         dialog = await OpenLayerEditorAsync(window, layer.Id);
         picker = dialog.GetVisualDescendants().OfType<ColorView>().Single(); picker.Color = Colors.CornflowerBlue;
         dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Aplicar")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await Task.Delay(50);
-        CheckLayer(model.Editor.Document.Layers[0].Color == "#6495ED", "Applying the wheel must save an RGB layer color.");
+        CheckLayer(model.Editor.Document.Layers[0].Color == "#6495ED", "Applying the square must save an RGB layer color.");
         model.Editor.Undo(); CheckLayer(model.Editor.Document.Layers[0] == layer, "Changing a layer color must undo in one operation.");
         LayerControl<Button>(window, "AddLayer").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(100);
         dialog = LayerDialog("Camada");
@@ -60,27 +60,33 @@ public sealed partial class SmokeApplication
         dialog.GetVisualDescendants().OfType<ColorView>().Single().Color = Colors.Orange;
         dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Aplicar")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await Task.Delay(50);
-        CheckLayer(model.Editor.Document.Layers.Last().Color == "#FFA500", "Creating a layer must use its selected wheel color.");
+        CheckLayer(model.Editor.Document.Layers.Last().Color == "#FFA500", "Creating a layer must use its selected square color.");
         model.Load(original); model.Editor.Select(original.Objects[0].Id);
-        Console.WriteLine("LAYER COLOR PASS: wheel pointer input, brightness, preview, cancel, edit, undo and creation.");
+        Console.WriteLine("LAYER COLOR PASS: square pointer input, brightness, preview, cancel, edit, undo and creation.");
     }
-    private static async Task VerifyWheelInteractionAsync(Window dialog, ColorView picker)
+    private static async Task VerifySquareInteractionAsync(Window dialog, ColorView picker)
     {
         var spectrum = dialog.GetVisualDescendants().OfType<ColorSpectrum>().Single(control => control.IsEffectivelyVisible);
-        CheckLayer(spectrum.Shape == ColorSpectrumShape.Ring && spectrum.Bounds.Width > 0, "The color wheel must be visible and circular.");
+        CheckLayer(spectrum.Shape == ColorSpectrumShape.Box && spectrum.Bounds.Width == 200 && spectrum.Bounds.Height == 200, "The color square must measure 200 by 200 pixels.");
+        CheckLayer(!picker.GetVisualDescendants().OfType<TabControl>().Any(), "The picker must omit the top tab strip.");
+        var preview = picker.GetVisualDescendants().OfType<Border>().Single(control => control.Name == "LayerColorPreview");
+        CheckLayer(preview.Bounds.Width == 48 && preview.Bounds.Height == 48 &&
+            preview.TranslatePoint(default, picker)!.Value.X > spectrum.TranslatePoint(default, picker)!.Value.X + spectrum.Bounds.Width,
+            "The color preview must be a square to the right of the spectrum.");
         var initial = picker.Color; var pointer = new Avalonia.Input.Pointer(301, PointerType.Mouse, true);
         var position = spectrum.TranslatePoint(new Point(spectrum.Bounds.Width * 0.85, spectrum.Bounds.Height * 0.5), dialog)!.Value;
         var target = (Control)dialog.InputHitTest(position)!;
         target.RaiseEvent(new PointerPressedEventArgs(target, pointer, dialog, position, 0,
             new PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 1));
         target.RaiseEvent(new PointerReleasedEventArgs(target, pointer, dialog, position, 1, new PointerPointProperties(), KeyModifiers.None, MouseButton.Left));
-        CheckLayer(picker.Color != initial, "Clicking the color wheel must select a different color.");
+        CheckLayer(picker.Color != initial, "Clicking the color square must select a different color.");
         var brightness = dialog.GetVisualDescendants().OfType<ColorSlider>().Single(control => control.IsEffectivelyVisible);
         var beforeBrightness = picker.Color; brightness.Value = brightness.Maximum * 0.85;
         CheckLayer(picker.Color != beforeBrightness, "The brightness slider must update the selected color.");
+        CheckLayer(preview.Background is SolidColorBrush brush && brush.Color == picker.Color, "The preview must follow spectrum and brightness changes.");
         await Task.Delay(100);
         Directory.CreateDirectory("artifacts/smoke");
         using var bitmap = new RenderTargetBitmap(new PixelSize((int)dialog.Bounds.Width, (int)dialog.Bounds.Height));
-        bitmap.Render(dialog); bitmap.Save("artifacts/smoke/layer-color-wheel.png", PngBitmapEncoderOptions.Default);
+        bitmap.Render(dialog); bitmap.Save("artifacts/smoke/layer-color-square.png", PngBitmapEncoderOptions.Default);
     }
 }
